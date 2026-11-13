@@ -20,7 +20,7 @@
 ## 安装
 
 ```bash
-code --install-extension netease-music-sidebar-1.1.0.vsix
+code --install-extension netease-music-sidebar-1.4.4.vsix
 ```
 
 安装后左侧活动栏会出现网易云图标（“Netease Music”），点击即可打开侧边栏。

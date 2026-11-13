@@ -1,5 +1,10 @@
 # 更新记录
 
+## 1.4.4
+
+- 补充 `repository` / `homepage` / `bugs` 字段，指向 GitHub 仓库。
+- 仓库地址：https://github.com/Stars-Twinkle/vscode-netease-music
+
 ## 1.4.3
 
 - publisher 改为 `starstwinkle`，扩展 ID 变为 `starstwinkle.netease-music-sidebar`。
