@@ -1,0 +1,267 @@
+{
+  "name": "netease-music-sidebar",
+  "displayName": "Netease Music",
+  "description": "在 VS Code 侧边栏里听网易云音乐：推荐、歌单、搜索、歌词与播放控制，全部收在侧边栏内，不弹出任何大窗口。",
+  "version": "1.4.3",
+  "publisher": "starstwinkle",
+  "icon": "media/icon.png",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "netease",
+    "music",
+    "网易云音乐",
+    "player",
+    "sidebar"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onView:neteaseSidebar.view",
+    "onCommand:neteaseSidebar.focus",
+    "onCommand:neteaseSidebar.playPause"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "neteaseSidebar",
+          "title": "Netease Music",
+          "icon": "media/activity.png"
+        }
+      ]
+    },
+    "views": {
+      "neteaseSidebar": [
+        {
+          "id": "neteaseSidebar.view",
+          "type": "webview",
+          "name": "Netease Music",
+          "icon": "media/activity.png",
+          "contextualTitle": "Netease Music"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "neteaseSidebar.focus",
+        "title": "打开侧边栏",
+        "category": "Netease Music",
+        "icon": "$(sidebar)"
+      },
+      {
+        "command": "neteaseSidebar.playPause",
+        "title": "播放 / 暂停",
+        "category": "Netease Music",
+        "icon": "$(debug-pause)"
+      },
+      {
+        "command": "neteaseSidebar.next",
+        "title": "下一首",
+        "category": "Netease Music",
+        "icon": "$(chevron-right)"
+      },
+      {
+        "command": "neteaseSidebar.previous",
+        "title": "上一首",
+        "category": "Netease Music",
+        "icon": "$(chevron-left)"
+      },
+      {
+        "command": "neteaseSidebar.search",
+        "title": "搜索歌曲",
+        "category": "Netease Music",
+        "icon": "$(search)"
+      },
+      {
+        "command": "neteaseSidebar.login",
+        "title": "登录 Netease Music",
+        "category": "Netease Music",
+        "icon": "$(account)"
+      },
+      {
+        "command": "neteaseSidebar.logout",
+        "title": "退出登录",
+        "category": "Netease Music"
+      },
+      {
+        "command": "neteaseSidebar.pickQuality",
+        "title": "切换播放音质",
+        "category": "Netease Music",
+        "icon": "$(verified)"
+      },
+      {
+        "command": "neteaseSidebar.quickSearch",
+        "title": "搜索（输入关键词）",
+        "category": "Netease Music",
+        "icon": "$(search)"
+      },
+      {
+        "command": "neteaseSidebar.refresh",
+        "title": "刷新",
+        "category": "Netease Music",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "neteaseSidebar.nowPlaying",
+        "title": "正在播放",
+        "category": "Netease Music",
+        "icon": "$(unfold)"
+      },
+      {
+        "command": "neteaseSidebar.toggleMute",
+        "title": "静音 / 取消静音",
+        "category": "Netease Music"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "neteaseSidebar.search",
+          "when": "view == neteaseSidebar.view",
+          "group": "navigation@1"
+        },
+        {
+          "command": "neteaseSidebar.pickQuality",
+          "when": "view == neteaseSidebar.view",
+          "group": "navigation@2"
+        },
+        {
+          "command": "neteaseSidebar.refresh",
+          "when": "view == neteaseSidebar.view",
+          "group": "navigation@3"
+        },
+        {
+          "command": "neteaseSidebar.login",
+          "when": "view == neteaseSidebar.view && neteaseSidebar.loggedIn != true",
+          "group": "1_account"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "neteaseSidebar.focus",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.playPause",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.next",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.previous",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.search",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.quickSearch",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.pickQuality",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.login",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.logout",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.refresh",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.nowPlaying",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.toggleMute",
+          "when": "true"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Netease Music",
+      "properties": {
+        "neteaseSidebar.quality": {
+          "type": "string",
+          "enum": [
+            "standard",
+            "higher",
+            "exhigh",
+            "lossless",
+            "hires",
+            "jyeffect",
+            "sky",
+            "jymaster"
+          ],
+          "enumDescriptions": [
+            "标准音质（128 kbps MP3）",
+            "较高音质（192 kbps MP3）",
+            "极高音质（320 kbps MP3）",
+            "无损音质（FLAC 16-bit）",
+            "高解析度无损（Hi-Res 24-bit）",
+            "高清臻音（24-bit，需 SVIP）",
+            "沉浸环绕声（5.1 声道，需 SVIP）",
+            "超清母带（Master 24-bit，需 SVIP）"
+          ],
+          "default": "exhigh",
+          "description": "播放音质。当前音质不可用时按 母带→Hi-Res→无损→极高→较高→标准 自动降级。"
+        },
+        "neteaseSidebar.volume": {
+          "type": "number",
+          "default": 70,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "初始音量（0-100）。"
+        },
+        "neteaseSidebar.apiHost": {
+          "type": "string",
+          "default": "https://interface.music.163.com",
+          "description": "EAPI 请求主机，一般无需修改。"
+        },
+        "neteaseSidebar.userAgent": {
+          "type": "string",
+          "default": "",
+          "description": "自定义请求 User-Agent，留空使用内置桌面客户端 UA。"
+        },
+        "neteaseSidebar.lyricsTranslation": {
+          "type": "boolean",
+          "default": true,
+          "description": "歌词页显示翻译歌词。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/host-sim.cjs && node scripts/webview-sim.cjs",
+    "smoke": "node esbuild.mjs --smoke && node dist/smoke.cjs",
+    "probe": "node esbuild.mjs --probe && node dist/probe.cjs",
+    "package": "node esbuild.mjs && npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.25.0",
+    "jsdom": "^31.0.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "qrcode-generator": "^2.0.4"
+  }
+}
