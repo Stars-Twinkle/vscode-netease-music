@@ -11,7 +11,7 @@ function log(level: "debug" | "info" | "warn" | "error", message: string, data?:
   const time = new Date().toLocaleTimeString("zh-CN", { hour12: false });
   const payload = data === undefined ? "" : ` ${typeof data === "string" ? data : safeJson(data)}`;
   output.appendLine(`[${time}] [${level}] ${message}${payload}`);
-  if (level === "error") output.show(true);
+  // 只写入输出通道，不自动弹出面板；用户可见的提示走原生通知
 }
 
 function safeJson(value: unknown): string {
