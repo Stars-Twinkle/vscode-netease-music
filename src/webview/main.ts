@@ -138,6 +138,27 @@ const VIP_META: Record<VipTier, { label: string; short: string }> = {
 /** 标“需 SVIP”的音质档位 */
 const SVIP_LEVELS = new Set<Quality>(["jyeffect", "sky", "jymaster"]);
 
+/** 强调色设置项 → CSS 颜色 */
+const ACCENT_MAP: Record<string, string> = {
+  theme: "var(--vscode-focusBorder, #007fd4)",
+  red: "#ec4141",
+  blue: "#3b82f6",
+  purple: "#a855f7",
+  green: "#22c55e",
+  orange: "#f97316",
+  cyan: "#06b6d4",
+};
+
+const ACCENT_LABELS: Array<{ value: string; label: string }> = [
+  { value: "theme", label: "跟随主题色" },
+  { value: "red", label: "红色" },
+  { value: "blue", label: "蓝色" },
+  { value: "purple", label: "紫色" },
+  { value: "green", label: "绿色" },
+  { value: "orange", label: "橙色" },
+  { value: "cyan", label: "青色" },
+];
+
 function fmtDate(ts: number): string {
   if (!ts) return "";
   const date = new Date(ts);
@@ -221,6 +242,7 @@ class App {
   private editingList = false;
   private dragging = false;
   private translationEnabled = true;
+  private accent = "theme";
   private likedIds = new Set<number>();
   private readonly busy = new Set<string>();
 
@@ -389,6 +411,13 @@ class App {
             payload: { value: Number((target as HTMLInputElement).value) },
           });
           break;
+        case "accent-select":
+          vscode.postMessage({
+            type: "command",
+            cmd: "accent",
+            payload: { value: (target as HTMLSelectElement).value },
+          });
+          break;
         default:
           break;
       }
@@ -494,6 +523,7 @@ class App {
       case "config":
         if (this.snapshot) this.snapshot.quality = message.config.quality;
         this.translationEnabled = message.config.translation;
+        this.applyAccent(message.config.accent);
         if (this.view === "settings" || this.view === "now") this.renderContent();
         break;
       case "ui":
@@ -1062,6 +1092,18 @@ class App {
       <select class="native-select" data-action="quality-select" aria-label="播放音质">${options}</select>
       <div class="setting">
         <div>
+          <div class="label">强调色</div>
+          <div class="desc">按钮、进度条、歌词高亮</div>
+        </div>
+      </div>
+      <select class="native-select" data-action="accent-select" aria-label="强调色">
+        ${ACCENT_LABELS.map(
+          (item) =>
+            `<option value="${item.value}"${this.accent === item.value ? " selected" : ""}>${item.label}</option>`,
+        ).join("")}
+      </select>
+      <div class="setting">
+        <div>
           <div class="label">音量</div>
           <div class="desc"><span class="volume-value">${this.volume()}%</span>${
             this.snapshot?.muted ? " · 已静音" : ""
@@ -1364,6 +1406,12 @@ class App {
     this.updatePlayButton();
     this.updatePlayerLike();
     this.updateProgress();
+  }
+
+  private applyAccent(accent: string): void {
+    this.accent = accent;
+    const color = ACCENT_MAP[accent] ?? ACCENT_MAP.theme;
+    document.documentElement.style.setProperty("--net-accent", color);
   }
 
   private updatePlayerLike(): void {

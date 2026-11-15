@@ -96,7 +96,7 @@ export type HostMessage =
   | { type: "playlistTracks"; playlistId: number; trackId: number; removed: boolean }
   | { type: "toast"; level: "info" | "error" | "success"; message: string }
   | { type: "busy"; scope: string; active: boolean; text?: string }
-  | { type: "config"; config: { quality: Quality; translation: boolean } }
+  | { type: "config"; config: { quality: Quality; translation: boolean; accent: string } }
   | { type: "ui"; action: "reload" | "search" | "nowplaying" | "login" | "home" }
   | { type: "control"; action: "toggle" | "play" | "pause" | "stop" | "volume" | "seek"; value?: number };
 

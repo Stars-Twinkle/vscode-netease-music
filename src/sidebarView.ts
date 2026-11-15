@@ -90,6 +90,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
   private volume = 70;
   private quality: Quality = "exhigh";
   private translation = true;
+  private accent = "theme";
   private account: AccountInfo | null = null;
   private lastHome?: HomeData;
 
@@ -255,7 +256,10 @@ export class SidebarView implements vscode.WebviewViewProvider {
   }
 
   private sendConfig(): void {
-    this.post({ type: "config", config: { quality: this.quality, translation: this.translation } });
+    this.post({
+      type: "config",
+      config: { quality: this.quality, translation: this.translation, accent: this.accent },
+    });
   }
 
   /* ---------------------------------------------------------------- 外部命令 */
@@ -445,6 +449,15 @@ export class SidebarView implements vscode.WebviewViewProvider {
         await vscode.workspace
           .getConfiguration("neteaseSidebar")
           .update("lyricsTranslation", value, vscode.ConfigurationTarget.Global);
+        this.readConfig();
+        this.sendConfig();
+        break;
+      }
+      case "accent": {
+        const value = String(payload.value ?? "theme");
+        await vscode.workspace
+          .getConfiguration("neteaseSidebar")
+          .update("accentColor", value, vscode.ConfigurationTarget.Global);
         this.readConfig();
         this.sendConfig();
         break;
@@ -1096,6 +1109,8 @@ export class SidebarView implements vscode.WebviewViewProvider {
     const quality = config.get<string>("quality");
     if (quality && QUALITY_CHAIN[quality as Quality]) this.quality = quality as Quality;
     this.translation = config.get<boolean>("lyricsTranslation") ?? true;
+    const accent = config.get<string>("accentColor");
+    if (accent) this.accent = accent;
     const volume = config.get<number>("volume");
     if (typeof volume === "number" && this.ctx.globalState.get<number>(KEYS.volume) === undefined) {
       this.volume = clampVolume(volume);

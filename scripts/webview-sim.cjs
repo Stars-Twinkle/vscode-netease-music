@@ -375,6 +375,23 @@ async function main() {
   );
   console.log("✓ 设置页：原生音质下拉（8 档）、原生复选框、实时音量");
 
+  const accentSelect = content().querySelector('select[data-action="accent-select"]');
+  assert(accentSelect, "设置页应有强调色下拉");
+  assert(accentSelect.querySelectorAll("option").length === 7, "强调色应有 7 种");
+  accentSelect.value = "blue";
+  accentSelect.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert(
+    posted.some((m) => m.type === "command" && m.cmd === "accent" && m.payload.value === "blue"),
+    "强调色应上抛命令",
+  );
+  post({ type: "config", config: { quality: "exhigh", translation: true, accent: "blue" } });
+  await wait();
+  assert(
+    window.document.documentElement.style.getPropertyValue("--net-accent") === "#3b82f6",
+    "强调色应写入 CSS 变量",
+  );
+  console.log("✓ 设置页：强调色下拉与主题变量");
+
   click('[data-action="open-account"]');
   await wait();
   assert(content().textContent.includes("还没有登录"), "未登录应显示登录引导");

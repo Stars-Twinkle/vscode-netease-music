@@ -2,7 +2,7 @@
   "name": "netease-music-sidebar",
   "displayName": "Netease Music",
   "description": "在 VS Code 侧边栏里听网易云音乐：推荐、歌单、搜索、歌词与播放控制，全部收在侧边栏内，不弹出任何大窗口。",
-  "version": "1.8.7",
+  "version": "1.9.0",
   "publisher": "starstwinkle",
   "icon": "media/icon.png",
   "repository": {
@@ -249,6 +249,29 @@
           "type": "boolean",
           "default": true,
           "description": "歌词页显示翻译歌词。"
+        },
+        "neteaseSidebar.accentColor": {
+          "type": "string",
+          "enum": [
+            "theme",
+            "red",
+            "blue",
+            "purple",
+            "green",
+            "orange",
+            "cyan"
+          ],
+          "enumDescriptions": [
+            "跟随 VS Code 当前主题的强调色",
+            "红色",
+            "蓝色",
+            "紫色",
+            "绿色",
+            "橙色",
+            "青色"
+          ],
+          "default": "theme",
+          "description": "侧边栏内按钮、进度条、高亮等强调色。"
         }
       }
     }

@@ -1,7 +1,8 @@
 :root {
-  --net-red: #ec4141;
-  --net-red-dim: #c62f2f;
-  --net-red-soft: rgba(236, 65, 65, 0.16);
+  --net-accent: #ec4141;
+  --net-red: var(--net-accent);
+  --net-red-dim: color-mix(in srgb, var(--net-accent) 82%, #000);
+  --net-red-soft: color-mix(in srgb, var(--net-accent) 16%, transparent);
   --net-radius: 6px;
 }
 
@@ -728,7 +729,7 @@ input[type="range"]::-webkit-slider-thumb {
 .row-like:hover {
   opacity: 1;
   color: var(--net-red);
-  background: rgba(236, 65, 65, 0.12);
+  background: color-mix(in srgb, var(--net-accent) 12%, transparent);
 }
 
 .row-like.active {
@@ -762,7 +763,7 @@ input[type="range"]::-webkit-slider-thumb {
 .row-remove:hover {
   opacity: 1;
   color: var(--net-red);
-  background: rgba(236, 65, 65, 0.12);
+  background: color-mix(in srgb, var(--net-accent) 12%, transparent);
 }
 
 .row-remove svg {
