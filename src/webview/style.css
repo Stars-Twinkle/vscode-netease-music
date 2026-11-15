@@ -921,6 +921,7 @@ input[type="range"]:active::-webkit-slider-thumb {
   padding: 6px 4px 26px;
   text-align: center;
   scroll-behavior: smooth;
+  position: relative;
 }
 
 .lyrics .line {

@@ -1444,8 +1444,12 @@ class App {
     nodes.forEach((node, i) => node.classList.toggle("active", i === index));
     const activeNode = index >= 0 ? nodes[index] : undefined;
     if (activeNode) {
-      const offset = activeNode.offsetTop - box.clientHeight / 2 + activeNode.clientHeight / 2;
-      box.scrollTop = Math.max(0, offset);
+      // 用相对歌词容器的位置计算，避免 offsetParent 变化导致算偏
+      const boxRect = box.getBoundingClientRect();
+      const nodeRect = activeNode.getBoundingClientRect();
+      const deltaInBox = nodeRect.top - boxRect.top + box.scrollTop;
+      const target = deltaInBox - box.clientHeight / 2 + nodeRect.height / 2;
+      box.scrollTop = Math.max(0, target);
     }
   }
 
