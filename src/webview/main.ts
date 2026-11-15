@@ -316,7 +316,9 @@ class App {
 
     this.progressEl.addEventListener("input", () => {
       this.dragging = true;
-      if (this.currentTimeEl) this.currentTimeEl.textContent = fmtTime((Number(this.progressEl?.value) / 1000) * this.duration());
+      const ratio = Number(this.progressEl?.value ?? 0) / 1000;
+      this.progressEl?.style.setProperty("--range-progress", `${(ratio * 100).toFixed(2)}%`);
+      if (this.currentTimeEl) this.currentTimeEl.textContent = fmtTime(ratio * this.duration());
     });
     const commit = () => {
       if (!this.dragging) return;
@@ -350,6 +352,7 @@ class App {
         const value = Number(target.value);
         this.audio.volume = value / 100;
         this.audio.muted = value === 0;
+        target.style.setProperty("--range-progress", `${value}%`);
         const label = this.contentEl.querySelector(".volume-value");
         if (label) label.textContent = `${value}%`;
       }
@@ -1076,6 +1079,7 @@ class App {
         value="${this.volume()}"
         data-action="volume-slider"
         aria-label="音量"
+        style="--range-progress: ${this.volume()}%"
       />
       <div class="setting">
         <label class="check-line">
@@ -1392,6 +1396,7 @@ class App {
     const position = Number.isFinite(this.audio.currentTime) ? this.audio.currentTime : 0;
     const ratio = duration > 0 ? Math.min(1, position / duration) : 0;
     this.progressEl.value = String(Math.round(ratio * 1000));
+    this.progressEl.style.setProperty("--range-progress", `${(ratio * 100).toFixed(2)}%`);
     if (this.currentTimeEl) this.currentTimeEl.textContent = fmtTime(position);
     if (this.totalTimeEl) this.totalTimeEl.textContent = fmtTime(duration);
   }

@@ -640,12 +640,19 @@ input[type="range"] {
   outline: none;
   cursor: pointer;
   min-width: 0;
+  --range-progress: 0%;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
   height: 3px;
   border-radius: 2px;
-  background: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.35));
+  background: linear-gradient(
+    to right,
+    var(--net-red) 0%,
+    var(--net-red) var(--range-progress),
+    var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.35)) var(--range-progress),
+    var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.35)) 100%
+  );
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -657,13 +664,6 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--net-red);
   border: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.progress-line:hover input[type="range"]::-webkit-slider-thumb,
-.volume-slider:hover input[type="range"]::-webkit-slider-thumb,
-input[type="range"]:active::-webkit-slider-thumb {
   opacity: 1;
 }
 
