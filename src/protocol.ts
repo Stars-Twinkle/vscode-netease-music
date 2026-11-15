@@ -104,4 +104,5 @@ export type HostMessage =
 export type WebviewMessage =
   | { type: "ready" }
   | { type: "command"; cmd: string; payload?: Record<string, unknown> }
+  | { type: "notify"; level: "info" | "success" | "error"; message: string }
   | { type: "audio"; event: "ended" | "error" | "play" | "pause" | "time"; value?: number; message?: string };

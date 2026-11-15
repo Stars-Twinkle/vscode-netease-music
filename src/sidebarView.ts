@@ -162,6 +162,10 @@ export class SidebarView implements vscode.WebviewViewProvider {
       this.onAudioEvent(message);
       return;
     }
+    if (message.type === "notify") {
+      this.toast(message.level, message.message);
+      return;
+    }
     if (message.type === "command") {
       try {
         await this.handleCommand(message.cmd, message.payload ?? {});
@@ -217,7 +221,8 @@ export class SidebarView implements vscode.WebviewViewProvider {
   }
 
   private toast(level: "info" | "error" | "success", message: string): void {
-    this.post({ type: "toast", level, message });
+    if (level === "error") void vscode.window.showErrorMessage(message);
+    else void vscode.window.showInformationMessage(message);
   }
 
   private setBusy(scope: string, active: boolean, text?: string): void {

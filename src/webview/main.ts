@@ -221,14 +221,12 @@ class App {
   private editingList = false;
   private dragging = false;
   private translationEnabled = true;
-  private toastTimer = 0;
   private likedIds = new Set<number>();
   private readonly busy = new Set<string>();
 
   private headerEl!: HTMLElement;
   private contentEl!: HTMLElement;
   private playerEl!: HTMLElement;
-  private toastEl!: HTMLElement;
   private progressEl?: HTMLInputElement;
   private currentTimeEl?: HTMLElement;
   private totalTimeEl?: HTMLElement;
@@ -249,12 +247,10 @@ class App {
       </header>
       <main class="content" id="content"></main>
       <footer class="player" id="player"></footer>
-      <div class="toast" id="toast"></div>
     `;
     this.headerEl = this.root.querySelector(".topbar") as HTMLElement;
     this.contentEl = this.root.querySelector("#content") as HTMLElement;
     this.playerEl = this.root.querySelector("#player") as HTMLElement;
-    this.toastEl = this.root.querySelector("#toast") as HTMLElement;
 
     this.buildPlayer();
     this.bindEvents();
@@ -1456,12 +1452,8 @@ class App {
   /* ---------------------------------------------------------------- 提示 */
 
   private toast(level: "info" | "error" | "success", message: string): void {
-    this.toastEl.textContent = message;
-    this.toastEl.className = `toast show ${level}`;
-    window.clearTimeout(this.toastTimer);
-    this.toastTimer = window.setTimeout(() => {
-      this.toastEl.className = "toast";
-    }, 2600);
+    // 通知与报错统一交给 VS Code 原生通知
+    vscode.postMessage({ type: "notify", level, message });
   }
 
   private updateBusyBar(): void {

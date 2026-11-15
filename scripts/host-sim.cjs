@@ -52,6 +52,7 @@ const mockVscode = {
     showInputBox: async () => "晴天",
     showWarningMessage: async () => "退出登录",
     showErrorMessage: async () => undefined,
+    showInformationMessage: async () => undefined,
   },
   commands: {
     registerCommand: (id, handler) => {
