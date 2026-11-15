@@ -29,6 +29,8 @@ export interface PlayerSnapshot {
   trial: boolean;
   /** 服务端实际给出的音质（可能因版权/会员被降级） */
   actualLevel: string;
+  /** 当前曲目是否已红心 */
+  liked: boolean;
   /** 播放失败原因（如无版权），由界面提示，不阻塞 */
   notice?: string;
 }
@@ -89,6 +91,7 @@ export type HostMessage =
   | { type: "search"; result: SearchResult }
   | { type: "lyric"; lyric: LyricMessage }
   | { type: "qr"; qr: QrState }
+  | { type: "liked"; ids: number[] }
   | { type: "toast"; level: "info" | "error" | "success"; message: string }
   | { type: "busy"; scope: string; active: boolean; text?: string }
   | { type: "config"; config: { quality: Quality; translation: boolean } }

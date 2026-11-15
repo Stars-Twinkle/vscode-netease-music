@@ -696,6 +696,87 @@ input[type="range"]:active::-webkit-slider-thumb {
   animation: pulse 1s ease-in-out infinite;
 }
 
+.controls .like-btn.active {
+  color: var(--net-red);
+  opacity: 1;
+}
+
+/* 列表行红心：默认隐藏，悬停显示 */
+.row-like {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.row:hover .row-like {
+  opacity: 0.6;
+}
+
+.row-like:hover {
+  opacity: 1;
+  color: var(--net-red);
+  background: rgba(236, 65, 65, 0.12);
+}
+
+.row-like.active {
+  opacity: 1;
+  color: var(--net-red);
+}
+
+.row-like svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* 正在播放页的操作按钮 */
+.now-ops {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 2px 0 8px;
+}
+
+.now-op {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.3));
+  background: rgba(128, 128, 128, 0.1);
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.now-op:hover {
+  border-color: var(--net-red);
+  color: var(--net-red);
+}
+
+.now-op.active {
+  color: var(--net-red);
+  border-color: var(--net-red);
+  background: var(--net-red-soft);
+}
+
+.now-op svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* 设置页音量 */
+.volume-slider {
+  width: 100%;
+  margin: 2px 0 12px;
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.35;

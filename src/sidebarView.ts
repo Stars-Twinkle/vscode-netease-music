@@ -95,6 +95,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
 
   private readonly urlCache = new Map<string, CachedUrl>();
   private invalidStreak = 0;
+  private likedIds = new Set<number>();
 
   private qrTimer?: ReturnType<typeof setTimeout>;
   private qrGeneration = 0;
@@ -153,6 +154,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
       this.sendConfig();
       this.emitSnapshot();
       void this.loadHome(true);
+      void this.refreshLiked();
       if (this.queue.current) void this.playCurrent(false);
       return;
     }
@@ -236,6 +238,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
       quality: this.quality,
       trial: this.trial,
       actualLevel: this.actualLevel,
+      liked: Boolean(this.queue.current && this.likedIds.has(this.queue.current.id)),
       notice: this.notice,
     };
   }
@@ -338,6 +341,8 @@ export class SidebarView implements vscode.WebviewViewProvider {
     await this.client.logout();
     this.account = null;
     this.lastHome = undefined;
+    this.likedIds.clear();
+    this.post({ type: "liked", ids: [] });
     void vscode.commands.executeCommand("setContext", "neteaseSidebar.loggedIn", false);
     await this.saveCookies();
     this.post({ type: "account", account: null });
@@ -474,7 +479,13 @@ export class SidebarView implements vscode.WebviewViewProvider {
         await this.logout();
         break;
       case "like":
-        await this.setLiked(Number(payload.id ?? 0), Boolean(payload.like));
+        await this.toggleLike(Number(payload.id ?? this.queue.current?.id ?? 0));
+        break;
+      case "toggleLike":
+        await this.toggleLike(Number(payload.id ?? this.queue.current?.id ?? 0));
+        break;
+      case "addToPlaylist":
+        await this.addToPlaylist(Number(payload.id ?? this.queue.current?.id ?? 0));
         break;
       case "quality": {
         const next = String(payload.quality ?? "") as Quality;
@@ -756,6 +767,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.lastHome = undefined;
     this.toast("success", account ? `已登录：${account.nickname}` : "登录成功");
     this.post({ type: "ui", action: "home" });
+    void this.refreshLiked();
   }
 
   /* ---------------------------------------------------------------- 扫码登录 */
@@ -963,14 +975,83 @@ export class SidebarView implements vscode.WebviewViewProvider {
     await this.afterLogin();
   }
 
-  private async setLiked(id: number, like: boolean): Promise<void> {
+  /** 登录后同步「我喜欢的音乐」里的歌曲 id，用于红心状态。 */
+  private async refreshLiked(): Promise<void> {
+    if (!this.client.isLoggedIn()) {
+      this.likedIds.clear();
+      this.post({ type: "liked", ids: [] });
+      return;
+    }
+    try {
+      const account = this.account ?? (await this.refreshAccount(false));
+      if (!account) return;
+      const playlists = await this.client.userPlaylists(account.userId);
+      const liked =
+        playlists.find((item) => item.specialType === 5) ?? playlists.find((item) => item.name.includes("喜欢的音乐"));
+      if (!liked) return;
+      const detail = await this.client.playlistDetail(liked.id);
+      this.likedIds = new Set(detail.tracks.map((track) => track.id));
+      this.post({ type: "liked", ids: [...this.likedIds] });
+      this.emitSnapshot();
+    } catch (err) {
+      this.log("warn", "喜欢列表加载失败", errorText(err));
+    }
+  }
+
+  private async toggleLike(id: number): Promise<void> {
     if (!id) return;
     if (!this.client.isLoggedIn()) {
       this.toast("error", "请先登录再收藏歌曲");
+      this.post({ type: "ui", action: "login" });
       return;
     }
-    await this.client.like(id, like);
-    this.toast("success", like ? "已添加到我喜欢的音乐" : "已取消喜欢");
+    const next = !this.likedIds.has(id);
+    await this.client.like(id, next);
+    if (next) this.likedIds.add(id);
+    else this.likedIds.delete(id);
+    this.post({ type: "liked", ids: [...this.likedIds] });
+    this.toast("success", next ? "已添加到我喜欢的音乐" : "已取消喜欢");
+    this.emitSnapshot();
+  }
+
+  private async addToPlaylist(id: number): Promise<void> {
+    if (!id) {
+      this.toast("info", "还没有选择歌曲");
+      return;
+    }
+    if (!this.client.isLoggedIn()) {
+      this.toast("error", "请先登录再添加歌单");
+      this.post({ type: "ui", action: "login" });
+      return;
+    }
+    const account = this.account ?? (await this.refreshAccount(false));
+    if (!account) return;
+    const playlists = (await this.client.userPlaylists(account.userId)).filter((item) => item.specialType !== 5);
+    const items = [
+      ...playlists.map((item) => ({ label: item.name, description: `${item.trackCount} 首`, value: item.id })),
+      { label: "$(add) 新建歌单…", description: "输入名称后创建", value: -1 },
+    ];
+    const picked = await vscode.window.showQuickPick(items, {
+      title: "添加到歌单",
+      placeHolder: "选择目标歌单",
+      matchOnDescription: true,
+    });
+    if (!picked) return;
+    let pid = picked.value;
+    let targetName = picked.label;
+    if (pid === -1) {
+      const name = await vscode.window.showInputBox({
+        title: "新建歌单",
+        prompt: "输入歌单名称",
+        ignoreFocusOut: true,
+        validateInput: (value) => (value.trim() ? undefined : "名称不能为空"),
+      });
+      if (!name?.trim()) return;
+      pid = await this.client.createPlaylist(name.trim());
+      targetName = name.trim();
+    }
+    await this.client.addToPlaylist(pid, [id]);
+    this.toast("success", `已添加到「${targetName}」`);
   }
 
   /* ------------------------------------------------------------ 配置 / 持久化 */

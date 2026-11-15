@@ -73,6 +73,7 @@ function normalizePlaylist(raw: unknown): PlaylistRef | null {
     playCount: item.playCount === undefined ? undefined : num(item.playCount),
     creatorName: str(item.creator?.nickname ?? item.creatorName ?? ""),
     subscribed: item.subscribed === undefined ? undefined : Boolean(item.subscribed),
+    specialType: item.specialType === undefined ? undefined : num(item.specialType),
   };
 }
 
@@ -420,6 +421,29 @@ export class NeteaseClient {
     });
     if (data.code === 301) throw new ApiError("请先登录后再收藏", 301);
     requireOk(data, like ? "红心" : "取消红心");
+  }
+
+  /** 添加歌曲到歌单。 */
+  async addToPlaylist(pid: number, trackIds: number[]): Promise<void> {
+    const data = await this.http.post<{ code: number; message?: string }>("/api/playlist/manipulate/tracks", {
+      op: "add",
+      pid,
+      trackIds: JSON.stringify(trackIds),
+      imme: "true",
+    });
+    requireOk(data, "添加到歌单");
+  }
+
+  /** 新建歌单，返回新歌单 id。 */
+  async createPlaylist(name: string): Promise<number> {
+    const data = await this.http.post<{ code: number; id?: number; playlist?: { id?: number } }>(
+      "/api/playlist/create",
+      { name, privacy: "0", type: "playlist" },
+    );
+    requireOk(data, "创建歌单");
+    const id = num(data.id ?? data.playlist?.id);
+    if (!id) throw new ApiError("新建歌单失败");
+    return id;
   }
 }
 

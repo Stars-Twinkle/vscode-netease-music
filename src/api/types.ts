@@ -20,6 +20,8 @@ export interface PlaylistRef {
   playCount?: number;
   creatorName?: string;
   subscribed?: boolean;
+  /** 5 = 我喜欢的音乐 */
+  specialType?: number;
 }
 
 export interface PlaylistDetail extends PlaylistRef {

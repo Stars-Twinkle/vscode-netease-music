@@ -197,17 +197,26 @@ async function main() {
   assert(modeCommand?.payload.mode === "shuffle", "模式按钮应切到随机");
   console.log("✓ 播放模式按钮");
 
-  click('[data-action="toggle-volume"]');
-  const volumePop = app.querySelector(".volume-pop");
-  assert(volumePop, "音量弹层应出现");
-  const volumeInput = volumePop.querySelector("input");
-  volumeInput.value = "35";
-  volumeInput.dispatchEvent(new window.Event("input"));
-  volumeInput.dispatchEvent(new window.Event("change"));
-  assert(Math.abs(audio.volume - 0.35) < 0.001, "音量应作用到 audio.volume");
-  assert(posted.some((m) => m.type === "command" && m.cmd === "volume" && m.payload.value === 35), "音量应上抛命令");
-  click('[data-action="toggle-volume"]');
-  console.log("✓ 音量弹层与持久化命令");
+  // 控制栏顺序：模式 / 加歌单 / 上一首 / 播放 / 下一首 / 红心 / 队列
+  const controlActions = [...app.querySelectorAll(".controls [data-action]")].map((el) => el.dataset.action);
+  assert(
+    JSON.stringify(controlActions) ===
+      JSON.stringify(["cycle-mode", "add-to-playlist", "prev", "toggle", "next", "toggle-like", "open-queue"]),
+    `控制栏顺序不对：${controlActions.join(",")}`,
+  );
+  assert(!app.querySelector('[data-action="toggle-volume"]'), "控制栏不应再有音量按钮");
+  console.log("✓ 控制栏顺序与居中播放键");
+
+  // 红心：liked 消息驱动状态，点击上抛 toggleLike
+  post({ type: "liked", ids: [tracks[1].id] });
+  await wait();
+  assert(app.querySelector(".like-btn.active"), "当前曲目已喜欢时红心应点亮");
+  click('[data-action="toggle-like"]');
+  assert(
+    posted.some((m) => m.type === "command" && m.cmd === "toggleLike" && m.payload.id === tracks[1].id),
+    "红心应上抛 toggleLike",
+  );
+  console.log("✓ 播放条红心状态与命令");
 
   click('[data-action="open-now"]');
   await wait();
@@ -317,7 +326,20 @@ async function main() {
     posted.some((m) => m.type === "command" && m.cmd === "translation" && m.payload.value === false),
     "翻译开关应上抛命令",
   );
-  console.log("✓ 设置页：原生音质下拉（8 档）与原生复选框");
+
+  // 实时音量：设置页滑块拖动即生效，松手后持久化
+  const volumeSlider = content().querySelector('input[data-action="volume-slider"]');
+  assert(volumeSlider, "设置页应有音量滑块");
+  volumeSlider.value = "35";
+  volumeSlider.dispatchEvent(new window.Event("input", { bubbles: true }));
+  assert(Math.abs(audio.volume - 0.35) < 0.001, "拖动音量应实时作用到音频");
+  assert(content().querySelector(".volume-value").textContent === "35%", "音量数值应实时更新");
+  volumeSlider.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert(
+    posted.some((m) => m.type === "command" && m.cmd === "volume" && m.payload.value === 35),
+    "音量应上抛持久化命令",
+  );
+  console.log("✓ 设置页：原生音质下拉（8 档）、原生复选框、实时音量");
 
   click('[data-action="open-account"]');
   await wait();

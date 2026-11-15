@@ -49,9 +49,13 @@ const ICON: Record<string, string> = {
   list: '<path d="M5.4 4.2h7.8M5.4 8h7.8M5.4 11.8h7.8"/><circle cx="2.9" cy="4.2" r="0.8" fill="currentColor"/><circle cx="2.9" cy="8" r="0.8" fill="currentColor"/><circle cx="2.9" cy="11.8" r="0.8" fill="currentColor"/>',
   heart:
     '<path d="M8 13s-4.9-2.9-4.9-6.1A2.7 2.7 0 0 1 8 5.1a2.7 2.7 0 0 1 4.9 1.8C12.9 10.1 8 13 8 13z"/>',
+  heartFilled:
+    '<path d="M8 13s-4.9-2.9-4.9-6.1A2.7 2.7 0 0 1 8 5.1a2.7 2.7 0 0 1 4.9 1.8C12.9 10.1 8 13 8 13z" fill="currentColor" stroke="none"/>',
   calendar: '<rect x="2.8" y="3.6" width="10.4" height="9.6" rx="1.4"/><path d="M2.8 6.4h10.4M5.6 2.4v2.4M10.4 2.4v2.4"/>',
   music: '<path d="M11.8 3.2v6.6"/><circle cx="9.9" cy="11" r="1.9"/><path d="M11.8 5.1 6 6.4"/><circle cx="4.1" cy="12.2" r="1.7"/>',
   more: '<circle cx="3.4" cy="8" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="12.6" cy="8" r="1" fill="currentColor"/>',
+  playlistAdd:
+    '<path d="M2.6 4.2h10.8M2.6 8h7.6M2.6 11.8h5.4"/><path d="M12.2 9.6v4.6M9.9 11.9h4.6"/>',
   refresh: '<path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13.2 2.6v2.9h-2.9"/>',
   clock: '<circle cx="8" cy="8" r="5.2"/><path d="M8 5v3.2l2 1.2"/>',
 };
@@ -213,10 +217,10 @@ class App {
   private searchDraft = "";
   private searchKind: "song" | "playlist" = "song";
   private renderLimit = 300;
-  private volumeOpen = false;
   private dragging = false;
   private translationEnabled = true;
   private toastTimer = 0;
+  private likedIds = new Set<number>();
   private readonly busy = new Set<string>();
 
   private headerEl!: HTMLElement;
@@ -300,10 +304,11 @@ class App {
       </div>
       <div class="controls">
         <button class="icon-btn mode" data-action="cycle-mode" title="列表循环">${icon("repeat")}</button>
+        <button class="icon-btn" data-action="add-to-playlist" title="添加到歌单">${icon("playlistAdd")}</button>
         <button class="icon-btn" data-action="prev" title="上一首">${icon("prev")}</button>
         <button class="icon-btn play-btn" data-action="toggle" title="播放 / 暂停">${icon("play")}</button>
         <button class="icon-btn" data-action="next" title="下一首">${icon("next")}</button>
-        <button class="icon-btn volume" data-action="toggle-volume" title="音量">${icon("volume")}</button>
+        <button class="icon-btn like-btn" data-action="toggle-like" title="喜欢">${icon("heart")}</button>
         <button class="icon-btn" data-action="open-queue" title="播放队列">${icon("list")}</button>
       </div>
     `;
@@ -331,14 +336,7 @@ class App {
     this.root.addEventListener("click", (event) => {
       const target = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
       if (!target) return;
-      const action = target.dataset.action ?? "";
-      if (action === "toggle-volume") {
-        event.stopPropagation();
-        this.toggleVolumePop();
-        return;
-      }
-      if (this.volumeOpen && !target.closest(".volume-pop")) this.closeVolumePop();
-      void this.onAction(action, target);
+      void this.onAction(target.dataset.action ?? "", target);
     });
 
     this.contentEl.addEventListener("submit", (event) => {
@@ -350,6 +348,13 @@ class App {
     this.contentEl.addEventListener("input", (event) => {
       const target = event.target as HTMLInputElement;
       if (target.dataset.field === "search") this.searchDraft = target.value;
+      if (target.dataset.action === "volume-slider") {
+        const value = Number(target.value);
+        this.audio.volume = value / 100;
+        this.audio.muted = value === 0;
+        const label = this.contentEl.querySelector(".volume-value");
+        if (label) label.textContent = `${value}%`;
+      }
     });
 
     this.contentEl.addEventListener("change", (event) => {
@@ -376,6 +381,13 @@ class App {
           if (this.searchDraft.trim()) this.runSearch();
           break;
         }
+        case "volume-slider":
+          vscode.postMessage({
+            type: "command",
+            cmd: "volume",
+            payload: { value: Number((target as HTMLInputElement).value) },
+          });
+          break;
         default:
           break;
       }
@@ -444,6 +456,11 @@ class App {
         if (this.view === "login" && this.loginTab === "qr") this.renderContent();
         break;
       }
+      case "liked":
+        this.likedIds = new Set(message.ids);
+        if (this.view === "now" || this.view === "list" || this.view === "queue") this.renderContent();
+        this.updatePlayerLike();
+        break;
       case "toast":
         this.toast(message.level, message.message);
         break;
@@ -740,6 +757,7 @@ class App {
 
   private trackRow(track: Track, index: number, action: string): string {
     const playing = this.snapshot?.current?.id === track.id;
+    const liked = this.likedIds.has(track.id) || (playing && Boolean(this.snapshot?.liked));
     return `
       <div class="row${playing ? " playing" : ""}" data-action="${action}" data-index="${index}" title="${esc(track.name)}">
         <span class="idx">${playing ? `<span class="eq"><i></i><i></i><i></i></span>` : index + 1}</span>
@@ -747,6 +765,7 @@ class App {
           <div class="name">${esc(track.name)}</div>
           <div class="by">${esc(track.artists.join(" / "))}</div>
         </div>
+        <button class="row-like${liked ? " active" : ""}" data-action="like-row" data-id="${track.id}" title="${liked ? "取消喜欢" : "喜欢"}">${icon(liked ? "heartFilled" : "heart")}</button>
         <span class="dur">${fmtTime(track.duration / 1000)}</span>
       </div>`;
   }
@@ -922,6 +941,7 @@ class App {
     if (!current) {
       return `<div class="empty"><div class="empty-icon">${icon("music")}</div>还没有播放歌曲</div>`;
     }
+    const liked = this.likedIds.has(current.id) || Boolean(this.snapshot?.liked);
     return `
       <div class="now">
         <div class="hero">
@@ -932,6 +952,14 @@ class App {
         <div class="head-info">
           <div class="name">${esc(current.name)}</div>
           <div class="by">${esc(current.artists.join(" / "))}${current.album ? ` · ${esc(current.album)}` : ""}</div>
+        </div>
+        <div class="now-ops">
+          <button class="now-op${liked ? " active" : ""}" data-action="toggle-like" title="${liked ? "取消喜欢" : "喜欢"}">
+            ${icon(liked ? "heartFilled" : "heart")}<span>${liked ? "已喜欢" : "喜欢"}</span>
+          </button>
+          <button class="now-op" data-action="add-to-playlist" title="添加到歌单">
+            ${icon("playlistAdd")}<span>歌单</span>
+          </button>
         </div>
         <div class="lyrics" id="lyrics"></div>
       </div>
@@ -946,6 +974,7 @@ class App {
     const rows = data.tracks
       .map((track, index) => {
         const playing = this.snapshot?.current?.id === track.id;
+        const liked = this.likedIds.has(track.id) || (playing && Boolean(this.snapshot?.liked));
         return `
         <div class="row${playing ? " playing" : ""}" data-action="jump" data-index="${index}">
           <span class="idx">${playing ? `<span class="eq"><i></i><i></i><i></i></span>` : index + 1}</span>
@@ -953,6 +982,7 @@ class App {
             <div class="name">${esc(track.name)}</div>
             <div class="by">${esc(track.artists.join(" / "))}</div>
           </div>
+          <button class="row-like${liked ? " active" : ""}" data-action="like-row" data-id="${track.id}" title="${liked ? "取消喜欢" : "喜欢"}">${icon(liked ? "heartFilled" : "heart")}</button>
           <span class="dur">${fmtTime(track.duration / 1000)}</span>
         </div>`;
       })
@@ -997,6 +1027,26 @@ class App {
         </div>
       </div>
       <select class="native-select" data-action="quality-select" aria-label="播放音质">${options}</select>
+      <div class="setting">
+        <div>
+          <div class="label">音量</div>
+          <div class="desc"><span class="volume-value">${this.volume()}%</span>${
+            this.snapshot?.muted ? " · 已静音" : ""
+          }</div>
+        </div>
+        <button class="icon-btn" data-action="toggle-mute" title="${
+          this.snapshot?.muted ? "取消静音" : "静音"
+        }">${icon(this.snapshot?.muted || this.volume() === 0 ? "volumeX" : "volume")}</button>
+      </div>
+      <input
+        type="range"
+        class="volume-slider"
+        min="0"
+        max="100"
+        value="${this.volume()}"
+        data-action="volume-slider"
+        aria-label="音量"
+      />
       <div class="setting">
         <label class="check-line">
           <input type="checkbox" data-action="translation-check"${this.translationEnabled ? " checked" : ""} />
@@ -1097,6 +1147,39 @@ class App {
       case "toggle":
         this.toggle();
         break;
+      case "toggle-like": {
+        const id = this.snapshot?.current?.id;
+        if (!id) {
+          this.toast("info", "还没有在播放的歌曲");
+          break;
+        }
+        vscode.postMessage({ type: "command", cmd: "toggleLike", payload: { id } });
+        break;
+      }
+      case "like-row": {
+        const id = Number(target.dataset.id ?? 0);
+        if (!id) break;
+        vscode.postMessage({ type: "command", cmd: "toggleLike", payload: { id } });
+        break;
+      }
+      case "add-to-playlist": {
+        const id = this.snapshot?.current?.id ?? Number(target.dataset.id ?? 0);
+        if (!id) {
+          this.toast("info", "还没有选择歌曲");
+          break;
+        }
+        vscode.postMessage({ type: "command", cmd: "addToPlaylist", payload: { id } });
+        break;
+      }
+      case "toggle-mute": {
+        const muted = this.snapshot?.muted ?? false;
+        vscode.postMessage({
+          type: "command",
+          cmd: "volume",
+          payload: { value: muted ? (this.snapshot?.volume ?? 70) : 0 },
+        });
+        break;
+      }
       case "next":
         vscode.postMessage({ type: "command", cmd: "next" });
         break;
@@ -1228,17 +1311,24 @@ class App {
     const modeBtn = this.playerEl.querySelector(".mode") as HTMLElement;
     modeBtn.innerHTML = icon(MODE_META[snapshot.mode].icon);
     modeBtn.title = MODE_META[snapshot.mode].label;
-    const volBtn = this.playerEl.querySelector(".volume") as HTMLElement;
-    volBtn.innerHTML = icon(snapshot.muted || snapshot.volume === 0 ? "volumeX" : "volume");
-    volBtn.title = snapshot.muted ? "已静音" : `音量 ${snapshot.volume}%`;
     const playBtn = this.playerEl.querySelector(".play-btn") as HTMLElement;
     playBtn.classList.toggle("loading", snapshot.loading);
     if (!this.audio.src) {
       this.audio.volume = (snapshot.muted ? 0 : snapshot.volume) / 100;
     }
     this.updatePlayButton();
+    this.updatePlayerLike();
     this.updateProgress();
-    if (this.volumeOpen) this.renderVolumePop();
+  }
+
+  private updatePlayerLike(): void {
+    const btn = this.playerEl?.querySelector<HTMLElement>(".like-btn");
+    if (!btn) return;
+    const current = this.snapshot?.current;
+    const liked = Boolean(current && (this.snapshot?.liked || this.likedIds.has(current.id)));
+    btn.classList.toggle("active", liked);
+    btn.title = liked ? "取消喜欢" : "喜欢";
+    btn.innerHTML = icon(liked ? "heartFilled" : "heart");
   }
 
   private updatePlayButton(): void {
@@ -1268,38 +1358,6 @@ class App {
   private onTimeUpdate(): void {
     this.updateProgress();
     this.updateLyricHighlight();
-  }
-
-  private toggleVolumePop(): void {
-    this.volumeOpen = !this.volumeOpen;
-    if (this.volumeOpen) this.renderVolumePop();
-    else this.playerEl.querySelector(".volume-pop")?.remove();
-  }
-
-  private closeVolumePop(): void {
-    this.volumeOpen = false;
-    this.playerEl.querySelector(".volume-pop")?.remove();
-  }
-
-  private renderVolumePop(): void {
-    this.playerEl.querySelector(".volume-pop")?.remove();
-    const pop = document.createElement("div");
-    pop.className = "volume-pop";
-    pop.innerHTML = `
-      <span class="value">${this.volume()}%</span>
-      <input type="range" min="0" max="100" value="${this.volume()}" aria-label="音量" />
-    `;
-    const input = pop.querySelector("input") as HTMLInputElement;
-    input.addEventListener("input", () => {
-      const value = Number(input.value);
-      this.audio.volume = value / 100;
-      this.audio.muted = value === 0;
-      (pop.querySelector(".value") as HTMLElement).textContent = `${value}%`;
-    });
-    input.addEventListener("change", () => {
-      vscode.postMessage({ type: "command", cmd: "volume", payload: { value: Number(input.value) } });
-    });
-    this.playerEl.appendChild(pop);
   }
 
   /* ---------------------------------------------------------------- 歌词 */
