@@ -853,9 +853,72 @@ export class SidebarView implements vscode.WebviewViewProvider {
       if (isEmail) await this.client.loginEmail(account, password);
       else await this.client.loginCellphone({ phone: account, password });
       await this.afterLogin();
+    } catch (err) {
+      // 8821：密码正确但账号要求短信验证，改用顶部输入框完成二次验证
+      if (err instanceof ApiError && err.code === 8821 && !account.includes("@")) {
+        await this.promptCaptcha(account);
+        return;
+      }
+      throw err;
     } finally {
       this.setBusy("login", false);
     }
+  }
+
+  /**
+   * 二次验证：密码登录被要求短信验证码时，用 VS Code 原生输入框收集，
+   * 不打断侧边栏，也不用切换到验证码页面。
+   */
+  private async promptCaptcha(phone: string): Promise<boolean> {
+    let sent = false;
+    try {
+      await this.client.sendCaptcha(phone);
+      sent = true;
+    } catch (err) {
+      this.log("warn", "自动发送验证码失败", errorText(err));
+    }
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      if (attempt > 0) {
+        // 第二次尝试前补发一条验证码，避免旧码过期
+        try {
+          await this.client.sendCaptcha(phone);
+          sent = true;
+        } catch (err) {
+          this.log("warn", "补发验证码失败", errorText(err));
+        }
+      }
+      const input = await vscode.window.showInputBox({
+        title: "Netease Music · 短信验证",
+        prompt: sent
+          ? `验证码已发送至 ${phone}，请输入短信中的 6 位验证码`
+          : `该账号需要短信验证，请输入发送至 ${phone} 的验证码（若未收到请重新登录并点获取验证码）`,
+        placeHolder: "6 位数字",
+        ignoreFocusOut: true,
+        validateInput: (value) => {
+          const text = value.trim();
+          if (!text) return "请输入验证码";
+          return /^\d{4,8}$/.test(text) ? undefined : "验证码应为数字";
+        },
+      });
+
+      if (input === undefined) {
+        this.toast("info", "已取消短信验证");
+        return false;
+      }
+
+      try {
+        await this.client.loginCellphone({ phone, captcha: input.trim() });
+        await this.afterLogin();
+        return true;
+      } catch (err) {
+        const message = errorText(err);
+        this.toast("error", message);
+        if (attempt === 0) continue;
+        return false;
+      }
+    }
+    return false;
   }
 
   private async loginWithCaptcha(phone: string, captcha: string): Promise<void> {
