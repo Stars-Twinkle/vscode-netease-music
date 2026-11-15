@@ -136,6 +136,16 @@ async function main() {
   assert(content().textContent.includes("每日推荐"), "首页应有每日推荐入口");
   console.log("✓ 首页渲染：快捷入口 + 歌单卡片");
 
+  // 歌单增删后首页数量要同步
+  const homeCallsBefore = posted.filter((m) => m.type === "command" && m.cmd === "home").length;
+  post({ type: "playlistTracks", playlistId: 11, trackId: 1, removed: true });
+  await wait();
+  assert(
+    posted.filter((m) => m.type === "command" && m.cmd === "home").length === homeCallsBefore + 1,
+    "歌单变化后首页应自动刷新",
+  );
+  console.log("✓ 歌单变化触发首页刷新");
+
   click('.card[data-id="11"]');
   assert(
     posted.some((m) => m.type === "command" && m.cmd === "playlist" && m.payload.id === 11),

@@ -465,12 +465,23 @@ class App {
         this.updatePlayerLike();
         break;
       case "playlistTracks":
-        if (this.list?.playlistId === message.playlistId && message.removed) {
-          this.list.tracks = this.list.tracks.filter((track) => track.id !== message.trackId);
+        if (this.list?.playlistId === message.playlistId) {
+          if (message.removed) {
+            this.list.tracks = this.list.tracks.filter((track) => track.id !== message.trackId);
+          } else if (
+            this.snapshot?.current &&
+            this.snapshot.current.id === message.trackId &&
+            !this.list.tracks.some((track) => track.id === message.trackId)
+          ) {
+            this.list.tracks.push(this.snapshot.current);
+          }
           this.list.trackCount = this.list.tracks.length;
           this.list.subtitle = `${this.list.tracks.length} 首`;
           if (this.view === "list") this.renderContent();
         }
+        // 首页的「我的歌单」数量也要跟着变
+        this.home = null;
+        if (this.view === "home") vscode.postMessage({ type: "command", cmd: "home" });
         break;
       case "toast":
         this.toast(message.level, message.message);

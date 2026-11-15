@@ -1055,12 +1055,14 @@ export class SidebarView implements vscode.WebviewViewProvider {
     }
     try {
       await this.client.addToPlaylist(pid, [id]);
+      this.lastHome = undefined;
       this.toast("success", `已添加到「${targetName}」`);
       this.post({ type: "playlistTracks", playlistId: pid, trackId: id, removed: false });
     } catch (err) {
       // 歌单里已经有这首歌：默认改成移除，而不是报错
       if (err instanceof ApiError && err.code === 502) {
         await this.client.removeFromPlaylist(pid, [id]);
+        this.lastHome = undefined;
         this.toast("info", `「${targetName}」里已有这首歌，已移除`);
         this.post({ type: "playlistTracks", playlistId: pid, trackId: id, removed: true });
         return;
@@ -1077,6 +1079,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
       return;
     }
     await this.client.removeFromPlaylist(playlistId, [trackId]);
+    this.lastHome = undefined;
     this.post({ type: "playlistTracks", playlistId, trackId, removed: true });
     this.toast("success", "已从歌单移除");
   }
