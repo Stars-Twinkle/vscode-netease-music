@@ -78,6 +78,7 @@ export interface TrackList {
   playlistId?: number;
   contextName: string;
   tracks: Track[];
+  trackCount?: number;
 }
 
 /** 扩展 → 侧边栏 */
@@ -92,6 +93,7 @@ export type HostMessage =
   | { type: "lyric"; lyric: LyricMessage }
   | { type: "qr"; qr: QrState }
   | { type: "liked"; ids: number[] }
+  | { type: "playlistTracks"; playlistId: number; trackId: number; removed: boolean }
   | { type: "toast"; level: "info" | "error" | "success"; message: string }
   | { type: "busy"; scope: string; active: boolean; text?: string }
   | { type: "config"; config: { quality: Quality; translation: boolean } }

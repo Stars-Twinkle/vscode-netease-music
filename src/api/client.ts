@@ -434,6 +434,16 @@ export class NeteaseClient {
     requireOk(data, "添加到歌单");
   }
 
+  /** 从歌单移除歌曲（只能操作自己的歌单）。 */
+  async removeFromPlaylist(pid: number, trackIds: number[]): Promise<void> {
+    const data = await this.http.post<{ code: number; message?: string }>("/api/playlist/manipulate/tracks", {
+      op: "del",
+      pid,
+      trackIds: JSON.stringify(trackIds),
+    });
+    requireOk(data, "从歌单移除");
+  }
+
   /** 新建歌单，返回新歌单 id。 */
   async createPlaylist(name: string): Promise<number> {
     const data = await this.http.post<{ code: number; id?: number; playlist?: { id?: number } }>(

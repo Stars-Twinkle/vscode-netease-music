@@ -158,6 +158,24 @@ async function main() {
   assert(playCommand && playCommand.payload.index === 1 && playCommand.payload.tracks.length === 3, "点击歌曲应上抛 playTracks");
   console.log("✓ 点击歌曲上抛 playTracks（整列表成队列）");
 
+  // 歌单编辑：移除歌曲并同步列表
+  click('[data-action="toggle-edit"]');
+  await wait();
+  const removeBtn = content().querySelector(".row-remove");
+  assert(removeBtn, "编辑模式应出现移除按钮");
+  const removeId = Number(removeBtn.dataset.id);
+  removeBtn.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  const removeCmd = posted.filter((m) => m.type === "command" && m.cmd === "removeTrack").pop();
+  assert(
+    removeCmd && removeCmd.payload.playlistId === 11 && removeCmd.payload.trackId === removeId,
+    "移除应上抛 removeTrack 命令",
+  );
+  post({ type: "playlistTracks", playlistId: 11, trackId: removeId, removed: true });
+  await wait();
+  assert(content().querySelectorAll(".row").length === 2, "移除后列表应减少一行");
+  click('[data-action="toggle-edit"]');
+  console.log("✓ 歌单编辑与移除状态同步");
+
   audio.duration = 200;
   post({
     type: "load",

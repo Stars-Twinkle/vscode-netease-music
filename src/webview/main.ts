@@ -56,6 +56,7 @@ const ICON: Record<string, string> = {
   more: '<circle cx="3.4" cy="8" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="12.6" cy="8" r="1" fill="currentColor"/>',
   playlistAdd:
     '<path d="M2.6 4.2h10.8M2.6 8h7.6M2.6 11.8h5.4"/><path d="M12.2 9.6v4.6M9.9 11.9h4.6"/>',
+  minus: '<path d="M3.6 8h8.8"/>',
   refresh: '<path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13.2 2.6v2.9h-2.9"/>',
   clock: '<circle cx="8" cy="8" r="5.2"/><path d="M8 5v3.2l2 1.2"/>',
 };
@@ -217,6 +218,7 @@ class App {
   private searchDraft = "";
   private searchKind: "song" | "playlist" = "song";
   private renderLimit = 300;
+  private editingList = false;
   private dragging = false;
   private translationEnabled = true;
   private toastTimer = 0;
@@ -431,6 +433,7 @@ class App {
       case "list":
         this.list = message.list;
         this.renderLimit = 300;
+        this.editingList = false;
         this.pushView("list", false);
         break;
       case "search":
@@ -460,6 +463,14 @@ class App {
         this.likedIds = new Set(message.ids);
         if (this.view === "now" || this.view === "list" || this.view === "queue") this.renderContent();
         this.updatePlayerLike();
+        break;
+      case "playlistTracks":
+        if (this.list?.playlistId === message.playlistId && message.removed) {
+          this.list.tracks = this.list.tracks.filter((track) => track.id !== message.trackId);
+          this.list.trackCount = this.list.tracks.length;
+          this.list.subtitle = `${this.list.tracks.length} 首`;
+          if (this.view === "list") this.renderContent();
+        }
         break;
       case "toast":
         this.toast(message.level, message.message);
@@ -731,9 +742,10 @@ class App {
     const list = this.list;
     if (!list) return `<div class="empty">加载中…</div>`;
     const tracks = list.tracks;
+    const editable = this.editingList && Boolean(list.playlistId);
     const rows = tracks
       .slice(0, this.renderLimit)
-      .map((track, index) => this.trackRow(track, index, "play-index"))
+      .map((track, index) => this.trackRow(track, index, "play-index", editable))
       .join("");
     const more =
       tracks.length > this.renderLimit
@@ -747,6 +759,11 @@ class App {
           <div class="desc">${esc([list.subtitle, list.description?.slice(0, 60)].filter(Boolean).join(" · "))}</div>
           <div class="ops">
             <button class="btn" data-action="play-all">${icon("play")}播放全部</button>
+            ${
+              list.playlistId
+                ? `<button class="btn ghost" data-action="toggle-edit">${this.editingList ? "完成" : "编辑"}</button>`
+                : ""
+            }
           </div>
         </div>
       </div>
@@ -755,7 +772,7 @@ class App {
     `;
   }
 
-  private trackRow(track: Track, index: number, action: string): string {
+  private trackRow(track: Track, index: number, action: string, editable = false): string {
     const playing = this.snapshot?.current?.id === track.id;
     const liked = this.likedIds.has(track.id) || (playing && Boolean(this.snapshot?.liked));
     return `
@@ -766,6 +783,11 @@ class App {
           <div class="by">${esc(track.artists.join(" / "))}</div>
         </div>
         <button class="row-like${liked ? " active" : ""}" data-action="like-row" data-id="${track.id}" title="${liked ? "取消喜欢" : "喜欢"}">${icon(liked ? "heartFilled" : "heart")}</button>
+        ${
+          editable
+            ? `<button class="row-remove" data-action="remove-track" data-id="${track.id}" title="从歌单移除">${icon("minus")}</button>`
+            : ""
+        }
         <span class="dur">${fmtTime(track.duration / 1000)}</span>
       </div>`;
   }
@@ -1169,6 +1191,17 @@ class App {
           break;
         }
         vscode.postMessage({ type: "command", cmd: "addToPlaylist", payload: { id } });
+        break;
+      }
+      case "toggle-edit":
+        this.editingList = !this.editingList;
+        this.renderContent();
+        break;
+      case "remove-track": {
+        const playlistId = this.list?.playlistId;
+        const trackId = Number(target.dataset.id ?? 0);
+        if (!playlistId || !trackId) break;
+        vscode.postMessage({ type: "command", cmd: "removeTrack", payload: { playlistId, trackId } });
         break;
       }
       case "toggle-mute": {

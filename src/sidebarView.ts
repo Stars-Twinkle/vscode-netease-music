@@ -487,6 +487,9 @@ export class SidebarView implements vscode.WebviewViewProvider {
       case "addToPlaylist":
         await this.addToPlaylist(Number(payload.id ?? this.queue.current?.id ?? 0));
         break;
+      case "removeTrack":
+        await this.removeTrack(Number(payload.playlistId ?? 0), Number(payload.trackId ?? 0));
+        break;
       case "quality": {
         const next = String(payload.quality ?? "") as Quality;
         await this.setQuality(next);
@@ -1050,8 +1053,32 @@ export class SidebarView implements vscode.WebviewViewProvider {
       pid = await this.client.createPlaylist(name.trim());
       targetName = name.trim();
     }
-    await this.client.addToPlaylist(pid, [id]);
-    this.toast("success", `已添加到「${targetName}」`);
+    try {
+      await this.client.addToPlaylist(pid, [id]);
+      this.toast("success", `已添加到「${targetName}」`);
+      this.post({ type: "playlistTracks", playlistId: pid, trackId: id, removed: false });
+    } catch (err) {
+      // 歌单里已经有这首歌：默认改成移除，而不是报错
+      if (err instanceof ApiError && err.code === 502) {
+        await this.client.removeFromPlaylist(pid, [id]);
+        this.toast("info", `「${targetName}」里已有这首歌，已移除`);
+        this.post({ type: "playlistTracks", playlistId: pid, trackId: id, removed: true });
+        return;
+      }
+      throw err;
+    }
+  }
+
+  /** 把歌曲从歌单移除。 */
+  private async removeTrack(playlistId: number, trackId: number): Promise<void> {
+    if (!playlistId || !trackId) return;
+    if (!this.client.isLoggedIn()) {
+      this.toast("error", "请先登录再编辑歌单");
+      return;
+    }
+    await this.client.removeFromPlaylist(playlistId, [trackId]);
+    this.post({ type: "playlistTracks", playlistId, trackId, removed: true });
+    this.toast("success", "已从歌单移除");
   }
 
   /* ------------------------------------------------------------ 配置 / 持久化 */
