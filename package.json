@@ -2,7 +2,7 @@
   "name": "netease-music-sidebar",
   "displayName": "Netease Music",
   "description": "在 VS Code 侧边栏里听网易云音乐：推荐、歌单、搜索、歌词与播放控制，全部收在侧边栏内，不弹出任何大窗口。",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "publisher": "starstwinkle",
   "icon": "media/icon.png",
   "repository": {

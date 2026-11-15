@@ -462,6 +462,12 @@ export class SidebarView implements vscode.WebviewViewProvider {
         this.sendConfig();
         break;
       }
+      case "openSettings":
+        await vscode.commands.executeCommand(
+          "workbench.action.openSettings",
+          "@ext:starstwinkle.netease-music-sidebar",
+        );
+        break;
       case "jump": {
         const track = this.queue.jump(Number(payload.index ?? -1));
         if (!track) return;

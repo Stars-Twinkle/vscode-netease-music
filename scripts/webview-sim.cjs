@@ -392,6 +392,13 @@ async function main() {
   );
   console.log("✓ 设置页：强调色下拉与主题变量");
 
+  click('[data-action="open-settings-page"]');
+  assert(
+    posted.some((m) => m.type === "command" && m.cmd === "openSettings"),
+    "更多设置应上抛 openSettings 命令",
+  );
+  console.log("✓ 更多设置按钮跳转 VS Code 设置");
+
   click('[data-action="open-account"]');
   await wait();
   assert(content().textContent.includes("还没有登录"), "未登录应显示登录引导");

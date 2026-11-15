@@ -1136,9 +1136,10 @@ class App {
         </div>
       </div>
       <div class="note" style="margin-top:12px">
-        更多参数请打开 VS Code 设置搜索 “Netease Music”，或用命令「Netease Music: 切换播放音质」。
+        更多参数可打开 VS Code 设置里的 Netease Music 选项。
         所有播放都在侧边栏内完成，不会弹出独立窗口。
       </div>
+      <button class="btn ghost block" data-action="open-settings-page" style="margin-top:10px">更多设置…</button>
     `;
   }
 
@@ -1267,6 +1268,9 @@ class App {
         });
         break;
       }
+      case "open-settings-page":
+        vscode.postMessage({ type: "command", cmd: "openSettings" });
+        break;
       case "next":
         vscode.postMessage({ type: "command", cmd: "next" });
         break;
