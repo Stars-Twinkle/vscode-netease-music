@@ -249,6 +249,12 @@ async function main() {
   click('[data-action="open-now"]');
   await wait();
   assert(app.querySelector(".now .disc"), "应进入正在播放视图");
+  assert(app.querySelector(".now-op.active"), "正在播放页应显示已喜欢");
+  post({ type: "liked", ids: [] });
+  await wait();
+  assert(!app.querySelector(".now-op.active"), "取消喜欢后正在播放页应立刻更新");
+  assert(!app.querySelector(".like-btn.active"), "取消喜欢后播放条红心也应熄灭");
+  console.log("✓ 正播页红心随状态实时更新");
   assert(posted.some((m) => m.type === "command" && m.cmd === "lyric"), "应请求歌词");
   post({
     type: "lyric",

@@ -461,6 +461,7 @@ class App {
       }
       case "liked":
         this.likedIds = new Set(message.ids);
+        if (this.snapshot?.current) this.snapshot.liked = this.likedIds.has(this.snapshot.current.id);
         if (this.view === "now" || this.view === "list" || this.view === "queue") this.renderContent();
         this.updatePlayerLike();
         break;
@@ -785,7 +786,7 @@ class App {
 
   private trackRow(track: Track, index: number, action: string, editable = false): string {
     const playing = this.snapshot?.current?.id === track.id;
-    const liked = this.likedIds.has(track.id) || (playing && Boolean(this.snapshot?.liked));
+    const liked = this.likedIds.has(track.id);
     return `
       <div class="row${playing ? " playing" : ""}" data-action="${action}" data-index="${index}" title="${esc(track.name)}">
         <span class="idx">${playing ? `<span class="eq"><i></i><i></i><i></i></span>` : index + 1}</span>
@@ -974,7 +975,7 @@ class App {
     if (!current) {
       return `<div class="empty"><div class="empty-icon">${icon("music")}</div>还没有播放歌曲</div>`;
     }
-    const liked = this.likedIds.has(current.id) || Boolean(this.snapshot?.liked);
+    const liked = this.likedIds.has(current.id);
     return `
       <div class="now">
         <div class="hero">
@@ -1007,7 +1008,7 @@ class App {
     const rows = data.tracks
       .map((track, index) => {
         const playing = this.snapshot?.current?.id === track.id;
-        const liked = this.likedIds.has(track.id) || (playing && Boolean(this.snapshot?.liked));
+        const liked = this.likedIds.has(track.id);
         return `
         <div class="row${playing ? " playing" : ""}" data-action="jump" data-index="${index}">
           <span class="idx">${playing ? `<span class="eq"><i></i><i></i><i></i></span>` : index + 1}</span>
@@ -1369,7 +1370,7 @@ class App {
     const btn = this.playerEl?.querySelector<HTMLElement>(".like-btn");
     if (!btn) return;
     const current = this.snapshot?.current;
-    const liked = Boolean(current && (this.snapshot?.liked || this.likedIds.has(current.id)));
+    const liked = Boolean(current && this.likedIds.has(current.id));
     btn.classList.toggle("active", liked);
     btn.title = liked ? "取消喜欢" : "喜欢";
     btn.innerHTML = icon(liked ? "heartFilled" : "heart");
