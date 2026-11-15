@@ -510,7 +510,7 @@ class App {
         }
         // 首页的「我的歌单」数量也要跟着变
         this.home = null;
-        if (this.view === "home") vscode.postMessage({ type: "command", cmd: "home" });
+        vscode.postMessage({ type: "command", cmd: "home" });
         break;
       case "toast":
         this.toast(message.level, message.message);
@@ -586,6 +586,7 @@ class App {
       this.requestLyric(this.snapshot.current.id);
     }
     if (view === "login" && this.loginTab === "qr" && !this.qr) this.requestQr();
+    if (view === "home") this.ensureHome();
     this.renderHeader();
     this.renderContent();
   }
@@ -598,8 +599,14 @@ class App {
   private back(): void {
     const previous = this.stack.pop();
     this.view = previous ?? "home";
+    if (this.view === "home") this.ensureHome();
     this.renderHeader();
     this.renderContent();
+  }
+
+  /** 首页数据缺失时补一次请求，避免停留在「正在加载推荐…」。 */
+  private ensureHome(): void {
+    if (!this.home) vscode.postMessage({ type: "command", cmd: "home" });
   }
 
   private goHome(): void {
