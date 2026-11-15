@@ -19,8 +19,20 @@
 
 ## 安装
 
+**从 Marketplace 安装（推荐）**
+
+在 VS Code 扩展面板搜索 **Netease Music**，或执行：
+
 ```bash
-code --install-extension netease-music-sidebar-1.4.4.vsix
+code --install-extension starstwinkle.netease-music-sidebar
+```
+
+**手动安装 vsix**
+
+从 [Releases](https://github.com/Stars-Twinkle/vscode-netease-music/releases) 下载最新的 `netease-music-sidebar-*.vsix`，然后：
+
+```bash
+code --install-extension <下载的 vsix 文件名>
 ```
 
 安装后左侧活动栏会出现网易云图标（“Netease Music”），点击即可打开侧边栏。
