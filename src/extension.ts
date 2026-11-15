@@ -43,21 +43,29 @@ const QUALITY_PICKS: Array<{ label: string; description: string; value: Quality 
   { label: "超清母带", description: "Master 24-bit · SVIP", value: "jymaster" },
 ];
 
-function updateStatusBar(item: vscode.StatusBarItem, snapshot: PlayerSnapshot): void {
+function updateStatusBar(
+  control: vscode.StatusBarItem,
+  info: vscode.StatusBarItem,
+  snapshot: PlayerSnapshot,
+): void {
   const current = snapshot.current;
   if (!current) {
-    item.text = "$(music) Netease Music";
-    item.tooltip = "点击打开 Netease Music 侧边栏";
+    control.text = "$(play)";
+    control.tooltip = "播放 / 暂停";
+    info.text = "$(music) Netease Music";
+    info.tooltip = "点击打开 Netease Music 侧边栏";
     return;
   }
+  control.text = snapshot.playing ? "$(debug-pause)" : "$(play)";
+  control.tooltip = snapshot.playing ? "暂停" : "播放";
   const title = current.name.length > 26 ? `${current.name.slice(0, 25)}…` : current.name;
-  item.text = `${snapshot.playing ? "$(play)" : "$(debug-pause)"} ${title}`;
+  info.text = title;
   const level = snapshot.actualLevel ? QUALITY_LABELS[snapshot.actualLevel] ?? snapshot.actualLevel : "";
   const lines = [`${current.name} — ${current.artists.join(" / ")}`];
   if (level) lines.push(`音质：${level}`);
   if (snapshot.contextName) lines.push(`队列：${snapshot.contextName}`);
   lines.push("点击打开侧边栏");
-  item.tooltip = lines.join("\n");
+  info.tooltip = lines.join("\n");
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -67,6 +75,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const savedCookies = context.globalState.get<Record<string, string>>("neteaseSidebar.cookies");
   const jar = new CookieJar(savedCookies ?? {});
+
+  const statusControl = vscode.window.createStatusBarItem(
+    "neteaseSidebar.control",
+    vscode.StatusBarAlignment.Left,
+    41,
+  );
+  statusControl.name = "Netease Music 播放控制";
+  statusControl.command = "neteaseSidebar.playPause";
+  statusControl.text = "$(play)";
+  statusControl.tooltip = "播放 / 暂停";
+  statusControl.show();
+  context.subscriptions.push(statusControl);
 
   const statusBar = vscode.window.createStatusBarItem("neteaseSidebar.status", vscode.StatusBarAlignment.Left, 40);
   statusBar.name = "Netease Music";
@@ -85,7 +105,7 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   );
 
-  const view = new SidebarView(context, client, log, (snapshot) => updateStatusBar(statusBar, snapshot));
+  const view = new SidebarView(context, client, log, (snapshot) => updateStatusBar(statusControl, statusBar, snapshot));
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(VIEW_ID, view, {
       // 播放时必须保活：侧边栏被切到后台也不能销毁音频上下文。
