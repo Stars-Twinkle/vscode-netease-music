@@ -880,7 +880,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
         return;
       }
       if (state.code === 803) {
-        await this.finishQrLogin(key, state.nickname);
+        await this.finishQrLogin(key);
         return;
       }
       const scanned = state.code === 802;
@@ -899,14 +899,11 @@ export class SidebarView implements vscode.WebviewViewProvider {
     }
   }
 
-  private async finishQrLogin(key: string, nickname?: string): Promise<void> {
+  private async finishQrLogin(key: string): Promise<void> {
     this.stopQrPolling();
     this.post({ type: "qr", qr: { key, svg: "", status: "confirmed", message: "登录成功，正在同步…" } });
-    await this.saveCookies();
-    const account = await this.refreshAccount(true);
-    this.lastHome = undefined;
-    this.toast("success", nickname ? `已登录：${nickname}` : account ? `已登录：${account.nickname}` : "登录成功");
-    this.post({ type: "ui", action: "home" });
+    // 统一走 afterLogin：保存 Cookie、恢复音质、重新加载当前歌曲
+    await this.afterLogin();
   }
 
   private async loginWithPassword(account: string, password: string): Promise<void> {
