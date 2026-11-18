@@ -244,6 +244,7 @@ class App {
   private translationEnabled = true;
   private accent = "theme";
   private likedIds = new Set<number>();
+  private lastTimeReport = 0;
   private readonly busy = new Set<string>();
 
   private headerEl!: HTMLElement;
@@ -445,6 +446,14 @@ class App {
         this.audio.src = message.url;
         this.audio.volume = this.mutedVolume();
         this.audio.muted = Boolean(this.snapshot?.muted);
+        if (message.startAt && message.startAt > 0) {
+          const startAt = message.startAt;
+          const seekOnce = () => {
+            this.audio.currentTime = startAt;
+            this.audio.removeEventListener("loadedmetadata", seekOnce);
+          };
+          this.audio.addEventListener("loadedmetadata", seekOnce);
+        }
         if (message.autoplay) this.playSafely();
         this.updatePlayButton();
         break;
@@ -963,7 +972,7 @@ class App {
           <div class="field">
             <label>验证码</label>
             <div class="row-inline">
-              <input name="captcha" inputmode="numeric" autocomplete="off" placeholder="6 位验证码" />
+              <input name="captcha" inputmode="numeric" autocomplete="off" placeholder="短信验证码" />
               <button class="btn ghost" type="button" data-action="send-captcha">获取验证码</button>
             </div>
           </div>
@@ -1463,6 +1472,12 @@ class App {
   private onTimeUpdate(): void {
     this.updateProgress();
     this.updateLyricHighlight();
+    // 每秒上报一次播放位置，重载时用于恢复进度
+    const now = Date.now();
+    if (now - this.lastTimeReport >= 1000 && !this.audio.paused) {
+      this.lastTimeReport = now;
+      vscode.postMessage({ type: "audio", event: "time", value: this.audio.currentTime });
+    }
   }
 
   /* ---------------------------------------------------------------- 歌词 */

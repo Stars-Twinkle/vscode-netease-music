@@ -101,6 +101,10 @@ export class SidebarView implements vscode.WebviewViewProvider {
   private qrTimer?: ReturnType<typeof setTimeout>;
   private qrGeneration = 0;
 
+  /** 当前播放位置（秒）与已装载的曲目，用于重载时保留进度 */
+  private position = 0;
+  private loadedTrackId = 0;
+
   constructor(
     private readonly ctx: vscode.ExtensionContext,
     private readonly client: NeteaseClient,
@@ -198,6 +202,9 @@ export class SidebarView implements vscode.WebviewViewProvider {
         this.toast("error", this.notice);
         break;
       case "time":
+        if (typeof message.value === "number" && Number.isFinite(message.value)) {
+          this.position = message.value;
+        }
         break;
     }
   }
@@ -327,7 +334,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.readConfig();
     this.sendConfig();
     this.urlCache.clear();
-    if (this.queue.current) await this.playCurrent(this.playing);
+    if (this.queue.current) await this.playCurrent(this.playing, true);
     else this.emitSnapshot();
   }
 
@@ -710,7 +717,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
     await this.playCurrent(true);
   }
 
-  private async playCurrent(autoplay: boolean): Promise<void> {
+  private async playCurrent(autoplay: boolean, keepPosition = false): Promise<void> {
     const track = this.queue.current;
     if (!track) {
       this.playing = false;
@@ -741,7 +748,12 @@ export class SidebarView implements vscode.WebviewViewProvider {
       this.invalidStreak = 0;
       this.trial = resolved.trial;
       this.actualLevel = resolved.level;
-      this.post({ type: "load", track, url: resolved.url, autoplay, trial: resolved.trial });
+      // 同一首歌重载（切换音质、登录后重新取地址）保留进度；切歌从 0 开始
+      const sameTrack = keepPosition && this.loadedTrackId === track.id;
+      const startAt = sameTrack ? this.position : 0;
+      if (!sameTrack) this.position = 0;
+      this.loadedTrackId = track.id;
+      this.post({ type: "load", track, url: resolved.url, autoplay, trial: resolved.trial, startAt });
       this.playing = autoplay;
     } catch (err) {
       this.notice = errorText(err);
@@ -795,6 +807,8 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.toast("success", account ? `已登录：${account.nickname}` : "登录成功");
     this.post({ type: "ui", action: "home" });
     void this.refreshLiked();
+    // 登录后重新取播放地址：之前未登录可能只拿到试听或拿不到地址
+    if (this.queue.current) await this.playCurrent(this.playing, true);
   }
 
   /* ---------------------------------------------------------------- 扫码登录 */
@@ -930,9 +944,9 @@ export class SidebarView implements vscode.WebviewViewProvider {
       const input = await vscode.window.showInputBox({
         title: "Netease Music · 短信验证",
         prompt: sent
-          ? `验证码已发送至 ${phone}，请输入短信中的 6 位验证码`
+          ? `验证码已发送至 ${phone}，请输入短信中的验证码`
           : `该账号需要短信验证，请输入发送至 ${phone} 的验证码（若未收到请重新登录并点获取验证码）`,
-        placeHolder: "6 位数字",
+        placeHolder: "短信验证码",
         ignoreFocusOut: true,
         validateInput: (value) => {
           const text = value.trim();

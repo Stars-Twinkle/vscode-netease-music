@@ -84,7 +84,7 @@ export interface TrackList {
 /** 扩展 → 侧边栏 */
 export type HostMessage =
   | { type: "snapshot"; snapshot: PlayerSnapshot }
-  | { type: "load"; track: Track; url: string; autoplay: boolean; trial: boolean }
+  | { type: "load"; track: Track; url: string; autoplay: boolean; trial: boolean; startAt?: number }
   | { type: "queue"; tracks: Track[]; index: number; contextName: string }
   | { type: "account"; account: AccountInfo | null }
   | { type: "home"; data: HomeData }

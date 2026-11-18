@@ -215,6 +215,20 @@ async function main() {
   assert(app.querySelector("#player .track-line .badge").textContent === "无损", "播放条应显示实际音质");
   console.log("✓ 加载音频并更新播放条（含实际音质标签）");
 
+  // 同一首歌重载（音质切换/登录）应恢复到原进度
+  post({
+    type: "load",
+    track: tracks[1],
+    url: "https://m800.music.126.net/test-reload.mp3",
+    autoplay: false,
+    trial: false,
+    startAt: 42,
+  });
+  audio.dispatchEvent(new window.Event("loadedmetadata"));
+  assert(Math.abs(audio.currentTime - 42) < 0.01, "重载应恢复到指定进度");
+  assert(audio.src.includes("test-reload.mp3"), "重载应更新音频地址");
+  console.log("✓ 重载保留播放进度");
+
   audio.currentTime = 30;
   audio.dispatchEvent(new window.Event("timeupdate"));
   assert(app.querySelector("#player .time.cur").textContent === "00:30", "进度时间应更新");
