@@ -2,7 +2,7 @@
   "name": "netease-music-sidebar",
   "displayName": "Netease Music",
   "description": "在 VS Code 侧边栏里听网易云音乐：推荐、歌单、搜索、歌词与播放控制，全部收在侧边栏内，不弹出任何大窗口。",
-  "version": "1.9.7",
+  "version": "1.10.0",
   "publisher": "starstwinkle",
   "icon": "media/icon.png",
   "repository": {
@@ -124,6 +124,42 @@
         "command": "neteaseSidebar.toggleMute",
         "title": "静音 / 取消静音",
         "category": "Netease Music"
+      },
+      {
+        "command": "neteaseSidebar.like",
+        "title": "喜欢 / 取消喜欢",
+        "category": "Netease Music",
+        "icon": "$(heart)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "neteaseSidebar.playPause",
+        "key": "ctrl+alt+n space"
+      },
+      {
+        "command": "neteaseSidebar.next",
+        "key": "ctrl+alt+n right"
+      },
+      {
+        "command": "neteaseSidebar.previous",
+        "key": "ctrl+alt+n left"
+      },
+      {
+        "command": "neteaseSidebar.like",
+        "key": "ctrl+alt+n l"
+      },
+      {
+        "command": "neteaseSidebar.toggleMute",
+        "key": "ctrl+alt+n m"
+      },
+      {
+        "command": "neteaseSidebar.search",
+        "key": "ctrl+alt+n f"
+      },
+      {
+        "command": "neteaseSidebar.quickSearch",
+        "key": "ctrl+alt+n shift+f"
       }
     ],
     "menus": {
@@ -196,6 +232,10 @@
         },
         {
           "command": "neteaseSidebar.toggleMute",
+          "when": "true"
+        },
+        {
+          "command": "neteaseSidebar.like",
           "when": "true"
         }
       ]

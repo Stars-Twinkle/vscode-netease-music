@@ -328,6 +328,17 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.emitSnapshot();
   }
 
+  /** 供快捷键调用：切换当前歌曲的红心。 */
+  async toggleCurrentLike(): Promise<void> {
+    if (!(await this.ensureReady())) return;
+    const id = this.queue.current?.id;
+    if (!id) {
+      this.toast("info", "还没有在播放的歌曲");
+      return;
+    }
+    await this.toggleLike(id);
+  }
+
   get currentQuality(): Quality {
     return this.quality;
   }

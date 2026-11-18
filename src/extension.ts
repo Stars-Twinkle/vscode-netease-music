@@ -128,6 +128,7 @@ export function activate(context: vscode.ExtensionContext): void {
   register("neteaseSidebar.next", () => view.commandNext());
   register("neteaseSidebar.previous", () => view.commandPrevious());
   register("neteaseSidebar.toggleMute", () => view.toggleMute());
+  register("neteaseSidebar.like", () => view.toggleCurrentLike());
   register("neteaseSidebar.search", () => view.requestUi("search"));
   register("neteaseSidebar.login", () => view.requestUi("login"));
   register("neteaseSidebar.nowPlaying", () => view.requestUi("nowplaying"));
