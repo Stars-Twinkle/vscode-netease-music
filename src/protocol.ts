@@ -25,6 +25,8 @@ export interface PlayerSnapshot {
   muted: boolean;
   mode: PlayMode;
   quality: Quality;
+  /** 用户设置的偏好音质（未登录时生效音质可能被临时降级） */
+  preferredQuality: Quality;
   /** 正在播放试听片段 */
   trial: boolean;
   /** 服务端实际给出的音质（可能因版权/会员被降级） */
@@ -96,7 +98,7 @@ export type HostMessage =
   | { type: "playlistTracks"; playlistId: number; trackId: number; removed: boolean }
   | { type: "toast"; level: "info" | "error" | "success"; message: string }
   | { type: "busy"; scope: string; active: boolean; text?: string }
-  | { type: "config"; config: { quality: Quality; translation: boolean; accent: string } }
+  | { type: "config"; config: { quality: Quality; preferredQuality: Quality; translation: boolean; accent: string } }
   | { type: "ui"; action: "reload" | "search" | "nowplaying" | "login" | "home" }
   | { type: "control"; action: "toggle" | "play" | "pause" | "stop" | "volume" | "seek"; value?: number };
 

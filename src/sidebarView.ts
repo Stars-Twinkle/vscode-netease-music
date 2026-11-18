@@ -250,6 +250,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
       muted: this.muted,
       mode: this.queue.playMode,
       quality: this.quality,
+      preferredQuality: this.preferredQuality,
       trial: this.trial,
       actualLevel: this.actualLevel,
       liked: Boolean(this.queue.current && this.likedIds.has(this.queue.current.id)),
@@ -266,7 +267,12 @@ export class SidebarView implements vscode.WebviewViewProvider {
   private sendConfig(): void {
     this.post({
       type: "config",
-      config: { quality: this.quality, translation: this.translation, accent: this.accent },
+      config: {
+        quality: this.quality,
+        preferredQuality: this.preferredQuality,
+        translation: this.translation,
+        accent: this.accent,
+      },
     });
   }
 

@@ -530,7 +530,10 @@ class App {
         this.updateBusyBar();
         break;
       case "config":
-        if (this.snapshot) this.snapshot.quality = message.config.quality;
+        if (this.snapshot) {
+          this.snapshot.quality = message.config.quality;
+          this.snapshot.preferredQuality = message.config.preferredQuality;
+        }
         this.translationEnabled = message.config.translation;
         this.applyAccent(message.config.accent);
         if (this.view === "settings" || this.view === "now") this.renderContent();
@@ -1075,11 +1078,14 @@ class App {
   }
 
   private viewSettings(): string {
-    const quality = this.snapshot?.quality ?? "exhigh";
+    const preferred = this.snapshot?.preferredQuality ?? this.snapshot?.quality ?? "exhigh";
+    const active = this.snapshot?.quality ?? preferred;
+    const degraded = preferred !== active;
+    const labelOf = (value: Quality) => QUALITY_META.find((item) => item.value === value)?.label ?? value;
     const isSvip = this.account?.vipTier === "svip";
     const options = QUALITY_META.map((item) => {
       const suffix = SVIP_LEVELS.has(item.value) && !isSvip && this.account ? "（需 SVIP）" : "";
-      return `<option value="${item.value}"${quality === item.value ? " selected" : ""}>${item.label} · ${item.desc}${suffix}</option>`;
+      return `<option value="${item.value}"${preferred === item.value ? " selected" : ""}>${item.label} · ${item.desc}${suffix}</option>`;
     }).join("");
     const vipRow = this.account
       ? `<div class="setting">
@@ -1106,6 +1112,11 @@ class App {
         </div>
       </div>
       <select class="native-select" data-action="quality-select" aria-label="播放音质">${options}</select>
+      ${
+        degraded
+          ? `<div class="note" style="margin:-4px 0 10px">未登录，当前临时使用「${labelOf(active)}」，登录后自动回到「${labelOf(preferred)}」。</div>`
+          : ""
+      }
       <div class="setting">
         <div>
           <div class="label">强调色</div>
