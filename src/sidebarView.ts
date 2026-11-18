@@ -89,6 +89,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
 
   private volume = 70;
   private quality: Quality = "exhigh";
+  private preferredQuality: Quality = "exhigh";
   private translation = true;
   private accent = "theme";
   private account: AccountInfo | null = null;
@@ -334,6 +335,9 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.readConfig();
     this.sendConfig();
     this.urlCache.clear();
+    if (this.quality !== this.preferredQuality) {
+      this.toast("info", "未登录，该音质将在登录后自动启用");
+    }
     if (this.queue.current) await this.playCurrent(this.playing, true);
     else this.emitSnapshot();
   }
@@ -362,8 +366,11 @@ export class SidebarView implements vscode.WebviewViewProvider {
     void vscode.commands.executeCommand("setContext", "neteaseSidebar.loggedIn", false);
     await this.saveCookies();
     this.post({ type: "account", account: null });
+    this.applyQualityForLogin();
+    this.sendConfig();
     this.toast("success", "已退出登录");
     this.post({ type: "ui", action: "home" });
+    if (this.queue.current) void this.playCurrent(this.playing, true);
   }
 
   /* ------------------------------------------------------------------ 命令 */
@@ -804,6 +811,8 @@ export class SidebarView implements vscode.WebviewViewProvider {
     await this.saveCookies();
     const account = await this.refreshAccount(true);
     this.lastHome = undefined;
+    this.applyQualityForLogin();
+    this.sendConfig();
     this.toast("success", account ? `已登录：${account.nickname}` : "登录成功");
     this.post({ type: "ui", action: "home" });
     void this.refreshLiked();
@@ -1127,13 +1136,24 @@ export class SidebarView implements vscode.WebviewViewProvider {
   private readConfig(): void {
     const config = vscode.workspace.getConfiguration("neteaseSidebar");
     const quality = config.get<string>("quality");
-    if (quality && QUALITY_CHAIN[quality as Quality]) this.quality = quality as Quality;
+    if (quality && QUALITY_CHAIN[quality as Quality]) this.preferredQuality = quality as Quality;
     this.translation = config.get<boolean>("lyricsTranslation") ?? true;
     const accent = config.get<string>("accentColor");
     if (accent) this.accent = accent;
+    this.applyQualityForLogin();
     const volume = config.get<number>("volume");
     if (typeof volume === "number" && this.ctx.globalState.get<number>(KEYS.volume) === undefined) {
       this.volume = clampVolume(volume);
+    }
+  }
+
+  /** SVIP 专属音质在未登录时临时降级，登录后自动回升到用户设置。 */
+  private applyQualityForLogin(): void {
+    const svipOnly: Quality[] = ["jyeffect", "sky", "jymaster"];
+    if (!this.client.isLoggedIn() && svipOnly.includes(this.preferredQuality)) {
+      this.quality = "exhigh";
+    } else {
+      this.quality = this.preferredQuality;
     }
   }
 
