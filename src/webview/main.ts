@@ -1426,6 +1426,13 @@ class App {
     badge.textContent = levelLabel;
     badge.hidden = !levelLabel;
     badge.classList.toggle("trial", snapshot.trial);
+    const preferredLabel = QUALITY_META.find((item) => item.value === snapshot.preferredQuality)?.label;
+    const actualLabel = LEVEL_LABEL[snapshot.actualLevel] ?? snapshot.actualLevel ?? "";
+    badge.title = snapshot.trial
+      ? `试听片段（设置：${preferredLabel ?? "默认"}）`
+      : actualLabel
+        ? `实际音质：${actualLabel}${preferredLabel ? ` · 设置：${preferredLabel}` : ""}`
+        : "";
     const modeBtn = this.playerEl.querySelector(".mode") as HTMLElement;
     modeBtn.innerHTML = icon(MODE_META[snapshot.mode].icon);
     modeBtn.title = MODE_META[snapshot.mode].label;
