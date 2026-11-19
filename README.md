@@ -61,6 +61,21 @@ code --install-extension <下载的 vsix 文件名>
 | `Ctrl+Alt+N F` | 打开搜索 |
 | `Ctrl+Alt+N Shift+F` | 输入关键词搜索 |
 
+## 发布（维护者）
+
+1. 在 `CHANGELOG.md` 顶部写好 `## <新版本>` 条目；
+2. 设置 PAT：`$env:VSCE_PAT = "<Azure DevOps Personal Access Token>"`；
+3. 执行：
+
+```bash
+pnpm release:patch   # 修复
+pnpm release:minor   # 新功能
+pnpm release:major   # 不兼容大改
+pnpm release:patch -- --dry-run   # 只演练
+```
+
+脚本会依次构建、打包、上传 Marketplace、提交、打标签并创建 GitHub Release。
+
 播放条始终固定在侧边栏底部；点击封面或歌名进入「正在播放」查看歌词，点左上角返回。
 
 ## 设置项

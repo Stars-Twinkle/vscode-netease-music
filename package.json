@@ -323,7 +323,10 @@
     "test": "node scripts/host-sim.cjs && node scripts/webview-sim.cjs",
     "smoke": "node esbuild.mjs --smoke && node dist/smoke.cjs",
     "probe": "node esbuild.mjs --probe && node dist/probe.cjs",
-    "package": "node esbuild.mjs && npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository"
+    "package": "node esbuild.mjs && npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository",
+    "release:patch": "node scripts/release.cjs patch",
+    "release:minor": "node scripts/release.cjs minor",
+    "release:major": "node scripts/release.cjs major"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
