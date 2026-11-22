@@ -185,7 +185,18 @@ async function loadSavedCookies(
 ): Promise<Record<string, string> | undefined> {
   try {
     const stored = await context.secrets.get(COOKIE_KEY);
-    if (stored) return JSON.parse(stored) as Record<string, string>;
+    if (stored) {
+      // 安全存储已有记录时，顺手清掉上次迁移失败残留的明文副本
+      if (context.globalState.get<Record<string, string>>(COOKIE_KEY)) {
+        try {
+          await context.globalState.update(COOKIE_KEY, undefined);
+          log("info", "已清理残留的明文登录凭据");
+        } catch (err) {
+          log("warn", "清理明文登录凭据失败", (err as Error).message);
+        }
+      }
+      return JSON.parse(stored) as Record<string, string>;
+    }
   } catch (err) {
     log("warn", "读取安全存储失败", (err as Error).message);
   }

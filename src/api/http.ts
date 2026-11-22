@@ -7,14 +7,15 @@ export const DESKTOP_UA =
 
 export const DEFAULT_HOST = "https://interface.music.163.com";
 
-/** 只允许 HTTPS 且属于网易云域名，防止自定义 apiHost 把凭据发往第三方。 */
+/** 只允许 HTTPS 且属于网易云 API 域名，防止自定义 apiHost 把凭据发往第三方。 */
 function isAllowedHost(raw: string): boolean {
   try {
     const url = new URL(raw);
     if (url.protocol !== "https:") return false;
     if (url.username || url.password) return false;
     const host = url.hostname.toLowerCase();
-    return host === "163.com" || host.endsWith(".163.com") || host === "126.net" || host.endsWith(".126.net");
+    // API 实际只走 music.163.com 及其子域（如 interface.music.163.com）
+    return host === "music.163.com" || host.endsWith(".music.163.com");
   } catch {
     return false;
   }

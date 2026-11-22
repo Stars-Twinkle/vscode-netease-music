@@ -379,13 +379,16 @@ export class SidebarView implements vscode.WebviewViewProvider {
   }
 
   async logout(): Promise<void> {
-    await this.client.logout();
+    try {
+      await this.client.logout();
+    } catch (err) {
+      this.log("warn", "退出登录接口失败，继续清理本地状态", errorText(err));
+    }
     this.account = null;
     this.lastHome = undefined;
     this.likedIds.clear();
     this.post({ type: "liked", ids: [] });
     void vscode.commands.executeCommand("setContext", "neteaseSidebar.loggedIn", false);
-    await this.saveCookies();
     this.post({ type: "account", account: null });
     this.applyQualityForLogin();
     this.sendConfig();
@@ -393,6 +396,8 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.post({ type: "ui", action: "home" });
     this.urlCache.clear();
     if (this.queue.current) void this.playCurrent(this.playing, true);
+    // 持久化放在最后：写入失败只提示，不影响界面退出状态
+    await this.saveCookies();
   }
 
   /* ------------------------------------------------------------------ 命令 */
@@ -1201,7 +1206,13 @@ export class SidebarView implements vscode.WebviewViewProvider {
   }
 
   async saveCookies(): Promise<void> {
-    await this.ctx.secrets.store(KEYS.cookies, JSON.stringify(this.client.jar.toJSON()));
+    try {
+      await this.ctx.secrets.store(KEYS.cookies, JSON.stringify(this.client.jar.toJSON()));
+    } catch (err) {
+      // 凭据保存失败不应中断登录/退出流程，只提示一次
+      this.log("warn", "保存登录凭据失败", errorText(err));
+      this.toast("error", `登录状态保存失败：${errorText(err)}`);
+    }
   }
 
   private saveQueue(): void {
