@@ -764,7 +764,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.notice = undefined;
     this.emitSnapshot();
     try {
-      const resolved = await this.resolvePlayable(track);
+      const resolved = await this.resolvePlayable(track, seq);
       if (seq !== this.loadSeq) return;
       if (!resolved.url) {
         this.loading = false;
@@ -807,6 +807,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
 
   private async resolvePlayable(
     track: Track,
+    seq?: number,
   ): Promise<{ url: string | null; trial: boolean; level: string; message?: string }> {
     let message: string | undefined;
     for (const level of QUALITY_CHAIN[this.quality] ?? ["standard"]) {
@@ -818,7 +819,10 @@ export class SidebarView implements vscode.WebviewViewProvider {
       const result = await this.client.songUrl(track.id, level);
       if (result.url) {
         const granted = result.level ?? level;
-        this.urlCache.set(key, { url: result.url, trial: result.trial, at: Date.now(), level: granted });
+        // 只允许最新一次装载写缓存：登录/切歌后旧请求的试听地址不能回填
+        if (seq === undefined || seq === this.loadSeq) {
+          this.urlCache.set(key, { url: result.url, trial: result.trial, at: Date.now(), level: granted });
+        }
         return { url: result.url, trial: result.trial, level: granted, message: result.message };
       }
       message = result.message ?? message;
@@ -1197,7 +1201,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
   }
 
   async saveCookies(): Promise<void> {
-    await this.ctx.globalState.update(KEYS.cookies, this.client.jar.toJSON());
+    await this.ctx.secrets.store(KEYS.cookies, JSON.stringify(this.client.jar.toJSON()));
   }
 
   private saveQueue(): void {

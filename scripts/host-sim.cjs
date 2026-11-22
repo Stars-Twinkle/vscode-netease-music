@@ -79,6 +79,7 @@ Module._load = function (request, parent, isMain) {
 };
 
 const store = new Map();
+const secretStore = new Map();
 const context = {
   subscriptions: [],
   extensionUri: mockVscode.Uri.file(path.resolve(__dirname, "..")),
@@ -89,6 +90,16 @@ const context = {
       store.set(key, value);
     },
     keys: () => [...store.keys()],
+  },
+  secrets: {
+    get: async (key) => secretStore.get(key),
+    store: async (key, value) => {
+      secretStore.set(key, value);
+    },
+    delete: async (key) => {
+      secretStore.delete(key);
+    },
+    onDidChange: () => ({ dispose() {} }),
   },
 };
 
@@ -137,7 +148,7 @@ function send(message) {
 }
 
 async function main() {
-  extension.activate(context);
+  await extension.activate(context);
   if (!provider) throw new Error("未注册 WebviewViewProvider");
   if (!viewProviderOptions?.webviewOptions?.retainContextWhenHidden) throw new Error("未启用 retainContextWhenHidden，后台播放会被销毁");
   console.log("✓ 激活并注册侧边栏视图（未创建任何 WebviewPanel）");

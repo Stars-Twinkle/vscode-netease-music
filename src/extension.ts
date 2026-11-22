@@ -68,12 +68,12 @@ function updateStatusBar(
   info.tooltip = lines.join("\n");
 }
 
-export function activate(context: vscode.ExtensionContext): void {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
   output = vscode.window.createOutputChannel("Netease Music");
   context.subscriptions.push(output);
   log("info", `激活 v${context.extension.packageJSON.version}`);
 
-  const savedCookies = context.globalState.get<Record<string, string>>("neteaseSidebar.cookies");
+  const savedCookies = await loadSavedCookies(context);
   const jar = new CookieJar(savedCookies ?? {});
 
   const statusControl = vscode.window.createStatusBarItem(
@@ -101,7 +101,7 @@ export function activate(context: vscode.ExtensionContext): void {
     jar,
     (level, message, data) => log(level, message, data),
     () => {
-      void context.globalState.update("neteaseSidebar.cookies", jar.toJSON());
+      void persistCookies(context, jar);
     },
   );
 
@@ -172,6 +172,41 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   log("info", "就绪");
+}
+
+const COOKIE_KEY = "neteaseSidebar.cookies";
+
+/**
+ * 登录凭据放在 SecretStorage（系统密钥链加密）。
+ * 旧版本存在 globalState 里的是明文，这里读取后迁移并清除。
+ */
+async function loadSavedCookies(
+  context: vscode.ExtensionContext,
+): Promise<Record<string, string> | undefined> {
+  try {
+    const stored = await context.secrets.get(COOKIE_KEY);
+    if (stored) return JSON.parse(stored) as Record<string, string>;
+  } catch (err) {
+    log("warn", "读取安全存储失败", (err as Error).message);
+  }
+  const legacy = context.globalState.get<Record<string, string>>(COOKIE_KEY);
+  if (!legacy) return undefined;
+  try {
+    await context.secrets.store(COOKIE_KEY, JSON.stringify(legacy));
+    await context.globalState.update(COOKIE_KEY, undefined);
+    log("info", "登录凭据已从明文存储迁移到安全存储");
+  } catch (err) {
+    log("warn", "登录凭据迁移失败，本次仍使用旧存储", (err as Error).message);
+  }
+  return legacy;
+}
+
+async function persistCookies(context: vscode.ExtensionContext, jar: CookieJar): Promise<void> {
+  try {
+    await context.secrets.store(COOKIE_KEY, JSON.stringify(jar.toJSON()));
+  } catch (err) {
+    log("warn", "保存登录凭据失败", (err as Error).message);
+  }
 }
 
 export function deactivate(): void {

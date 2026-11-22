@@ -196,6 +196,8 @@ export class EapiTransport {
         headers,
         body: `params=${encodeURIComponent(payload)}`,
         signal: controller.signal,
+        // 拒绝重定向：POST 被 307/308 重发时会把会话 Cookie 带到新地址
+        redirect: "error",
       });
       if (this.jar.absorbSetCookie(res.headers)) this.onCookiesChange?.();
       let text = await res.text();
@@ -217,6 +219,9 @@ export class EapiTransport {
       if (err instanceof ApiError) throw err;
       if (err instanceof Error && err.name === "AbortError") {
         throw new ApiError(`请求超时（${timeout}ms）：${path}`);
+      }
+      if (err instanceof TypeError && /redirect/i.test(err.message)) {
+        throw new ApiError("服务端返回了重定向，已拒绝以保护登录凭据");
       }
       throw new ApiError(`网络错误：${(err as Error).message}`);
     } finally {
