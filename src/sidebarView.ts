@@ -105,6 +105,10 @@ export class SidebarView implements vscode.WebviewViewProvider {
   /** 当前播放位置（秒）与已装载的曲目，用于重载时保留进度 */
   private position = 0;
   private loadedTrackId = 0;
+  /** 每次装载递增，只有最新一次的结果可以生效，避免快速切歌时旧请求覆盖新歌 */
+  private loadSeq = 0;
+  /** 搜索请求序号，防止旧搜索结果覆盖新结果 */
+  private searchSeq = 0;
 
   constructor(
     private readonly ctx: vscode.ExtensionContext,
@@ -387,6 +391,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.sendConfig();
     this.toast("success", "已退出登录");
     this.post({ type: "ui", action: "home" });
+    this.urlCache.clear();
     if (this.queue.current) void this.playCurrent(this.playing, true);
   }
 
@@ -690,9 +695,12 @@ export class SidebarView implements vscode.WebviewViewProvider {
   private async runSearch(keyword: string, kind: "song" | "playlist", offset: number): Promise<void> {
     const trimmed = keyword.trim();
     if (!trimmed) return;
+    // 只有最后一次搜索能更新结果，避免快速输入时旧响应覆盖新结果
+    const seq = ++this.searchSeq;
     this.setBusy("search", true, "正在搜索…");
     try {
       const result = await this.client.search(trimmed, kind, 30, offset);
+      if (seq !== this.searchSeq) return;
       this.post({
         type: "search",
         result: {
@@ -702,10 +710,13 @@ export class SidebarView implements vscode.WebviewViewProvider {
           playlists: result.playlists,
           count: kind === "song" ? result.songs.length : result.playlists.length,
           hasMore: kind === "song" ? result.songs.length === 30 : result.playlists.length === 30,
+          seq,
         },
       });
+    } catch (err) {
+      if (seq === this.searchSeq) throw err;
     } finally {
-      this.setBusy("search", false);
+      if (seq === this.searchSeq) this.setBusy("search", false);
     }
   }
 
@@ -742,6 +753,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
   }
 
   private async playCurrent(autoplay: boolean, keepPosition = false): Promise<void> {
+    const seq = ++this.loadSeq;
     const track = this.queue.current;
     if (!track) {
       this.playing = false;
@@ -753,6 +765,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.emitSnapshot();
     try {
       const resolved = await this.resolvePlayable(track);
+      if (seq !== this.loadSeq) return;
       if (!resolved.url) {
         this.loading = false;
         this.playing = false;
@@ -780,12 +793,15 @@ export class SidebarView implements vscode.WebviewViewProvider {
       this.post({ type: "load", track, url: resolved.url, autoplay, trial: resolved.trial, startAt });
       this.playing = autoplay;
     } catch (err) {
+      if (seq !== this.loadSeq) return;
       this.notice = errorText(err);
       this.log("error", "播放失败", this.notice);
       this.toast("error", this.notice);
     } finally {
-      this.loading = false;
-      this.emitSnapshot();
+      if (seq === this.loadSeq) {
+        this.loading = false;
+        this.emitSnapshot();
+      }
     }
   }
 
@@ -833,6 +849,8 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.toast("success", account ? `已登录：${account.nickname}` : "登录成功");
     this.post({ type: "ui", action: "home" });
     void this.refreshLiked();
+    // 旧会话缓存的地址可能只有试听，登录后必须重新取址
+    this.urlCache.clear();
     // 登录后重新取播放地址：之前未登录可能只拿到试听或拿不到地址
     if (this.queue.current) await this.playCurrent(this.playing, true);
   }

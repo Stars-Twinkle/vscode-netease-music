@@ -237,6 +237,7 @@ class App {
   private loginTab: LoginTab = "qr";
   private qr: QrState | null = null;
   private searchDraft = "";
+  private lastSearchSeq = 0;
   private searchKind: "song" | "playlist" = "song";
   private renderLimit = 300;
   private editingList = false;
@@ -474,6 +475,9 @@ class App {
         this.pushView("list", false);
         break;
       case "search":
+        // 只接受最新一次搜索的结果，避免旧响应覆盖新结果
+        if (typeof message.result.seq === "number" && message.result.seq < this.lastSearchSeq) break;
+        if (typeof message.result.seq === "number") this.lastSearchSeq = message.result.seq;
         this.searchResult = message.result;
         this.searchDraft = message.result.keyword;
         if (this.view !== "search") this.pushView("search", false);

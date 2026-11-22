@@ -68,7 +68,8 @@ console.log(`版本：${previousVersion} → ${next}（${kind}）`);
 
 run("node esbuild.mjs");
 run("npx --yes @vscode/vsce package --no-dependencies");
-run(`npx --yes @vscode/vsce publish --packagePath "${vsix}" -p "${token ?? "<PAT>"}"`);
+// PAT 通过环境变量 VSCE_PAT 交给 vsce，不写进命令行，日志里也不会出现
+run(`npx --yes @vscode/vsce publish --packagePath "${vsix}"`);
 run(`git add -A && git commit -m "chore: release ${next}"`);
 run(`git tag ${next}`, { ignoreFailure: true });
 run("git push && git push --tags", { ignoreFailure: true });

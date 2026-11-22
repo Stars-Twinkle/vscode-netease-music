@@ -349,6 +349,37 @@ async function main() {
   assert(posted.some((m) => m.type === "command" && m.cmd === "playTracks" && m.payload.tracks[0].id === 9), "点击结果应播放");
   console.log("✓ 搜索、原生类型下拉与结果播放");
 
+  // 旧搜索结果晚到，不能覆盖新结果
+  post({
+    type: "search",
+    result: {
+      keyword: "新结果",
+      kind: "song",
+      songs: [track(10, "新结果歌曲")],
+      playlists: [],
+      count: 1,
+      hasMore: false,
+      seq: 2,
+    },
+  });
+  await wait();
+  post({
+    type: "search",
+    result: {
+      keyword: "旧结果",
+      kind: "song",
+      songs: [track(11, "旧结果歌曲")],
+      playlists: [],
+      count: 1,
+      hasMore: false,
+      seq: 1,
+    },
+  });
+  await wait();
+  assert(content().textContent.includes("新结果歌曲"), "应保留最新搜索结果");
+  assert(!content().textContent.includes("旧结果歌曲"), "旧搜索结果不应覆盖新结果");
+  console.log("✓ 搜索乱序响应只保留最新结果");
+
   post({ type: "queue", tracks, index: 1, contextName: "测试歌单" });
   click('[data-action="open-queue"]');
   await wait();

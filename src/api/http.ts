@@ -7,6 +7,19 @@ export const DESKTOP_UA =
 
 export const DEFAULT_HOST = "https://interface.music.163.com";
 
+/** 只允许 HTTPS 且属于网易云域名，防止自定义 apiHost 把凭据发往第三方。 */
+function isAllowedHost(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return false;
+    if (url.username || url.password) return false;
+    const host = url.hostname.toLowerCase();
+    return host === "163.com" || host.endsWith(".163.com") || host === "126.net" || host.endsWith(".126.net");
+  } catch {
+    return false;
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -78,7 +91,11 @@ export class EapiTransport {
   get host(): string {
     const configured = this.getOptions().host?.trim();
     if (!configured || configured === "https://music.163.com") return DEFAULT_HOST;
-    return configured.replace(/\/+$/, "");
+    const normalized = configured.replace(/\/+$/, "");
+    if (isAllowedHost(normalized)) return normalized;
+    // 自定义主机不在白名单内时回退，避免把登录凭据发到第三方地址
+    this.log("warn", "自定义 apiHost 不在允许范围内，已回退默认主机", normalized);
+    return DEFAULT_HOST;
   }
 
   /** 风控要求完整的设备指纹，只发 `os` 会被当成探测请求（-462）。 */

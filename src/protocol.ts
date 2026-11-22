@@ -53,6 +53,8 @@ export interface SearchResult {
   playlists: PlaylistRef[];
   count: number;
   hasMore: boolean;
+  /** 搜索请求序号，webview 只接受最新的结果 */
+  seq?: number;
 }
 
 export interface LyricMessage {
