@@ -1,6 +1,11 @@
 /** 只服务于 music.163.com 的最小 Cookie 容器。 */
 export class CookieJar {
   private readonly cookies = new Map<string, string>();
+  private generation = 0;
+
+  get sessionGeneration(): number {
+    return this.generation;
+  }
 
   constructor(initial?: Record<string, string> | string) {
     if (typeof initial === "string") this.mergeCookieHeader(initial);
@@ -18,6 +23,7 @@ export class CookieJar {
   }
 
   clear(): void {
+    this.generation++;
     this.cookies.clear();
   }
 

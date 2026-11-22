@@ -242,7 +242,76 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => {
+async function testCredentials() {
+  const assert = require("node:assert/strict");
+  const cookieKey = "neteaseSidebar.cookies";
+  const pendingKey = "neteaseSidebar.cookieCleanupPending";
+  const legacy = { MUSIC_U: "legacy-fixture" };
+  global.fetch = async () => { throw new Error("offline"); };
+
+  for (const invalid of ["bad JSON", "null", "[]", '{"MUSIC_U":3}']) {
+    store.set(cookieKey, legacy);
+    secretStore.set(cookieKey, invalid);
+    await extension.activate(context);
+    assert.equal(provider.client.jar.get("MUSIC_U"), legacy.MUSIC_U);
+    assert.deepEqual(JSON.parse(secretStore.get(cookieKey)), legacy);
+    assert.equal(store.get(cookieKey), undefined);
+  }
+
+  const save = context.secrets.store;
+  store.set(cookieKey, legacy);
+  secretStore.set(cookieKey, "broken");
+  context.secrets.store = async () => { throw new Error("storage unavailable"); };
+  await extension.activate(context);
+  assert.deepEqual(store.get(cookieKey), legacy);
+  context.secrets.store = save;
+  await extension.activate(context);
+  assert.equal(store.get(cookieKey), undefined);
+
+  store.set(cookieKey, legacy);
+  secretStore.set(cookieKey, JSON.stringify({ MUSIC_U: "newer-fixture" }));
+  await extension.activate(context);
+  assert.equal(provider.client.jar.get("MUSIC_U"), "newer-fixture");
+  assert.equal(store.get(cookieKey), undefined);
+
+  const remove = context.secrets.delete;
+  context.secrets.delete = async () => { throw new Error("storage unavailable"); };
+  provider.resolveWebviewView(view);
+  provider.ready = true;
+  await provider.logout();
+  assert.equal(last("account").account, null);
+  assert.equal(store.get(pendingKey), true);
+  assert.ok(secretStore.has(cookieKey));
+  await extension.activate(context);
+  assert.equal(provider.client.isLoggedIn(), false);
+  assert.equal(store.get(pendingKey), true);
+
+  context.secrets.delete = remove;
+  await extension.activate(context);
+  assert.equal(provider.client.isLoggedIn(), false);
+  assert.equal(secretStore.has(cookieKey), false);
+  assert.equal(store.get(pendingKey), undefined);
+
+  // 退出期间仍在等待的旧请求，即使晚到也不能恢复内存 Cookie。
+  let completeRequest;
+  let signalStarted;
+  const started = new Promise(resolve => { signalStarted = resolve; });
+  global.fetch = async () => {
+    signalStarted();
+    return new Promise(resolve => { completeRequest = resolve; });
+  };
+  const delayed = provider.client.http.post("/api/review");
+  await started;
+  global.fetch = async () => { throw new Error("offline"); };
+  await provider.logout();
+  completeRequest(new Response('{"code":200}', { headers: { "set-cookie": "MUSIC_U=stale-fixture" } }));
+  await delayed;
+  assert.equal(provider.client.isLoggedIn(), false);
+  console.log("✓ 凭据迁移、清理失败重启、自动重试及迟到响应");
+}
+
+const run = process.argv.includes("--credentials") ? testCredentials : main;
+run().catch((err) => {
   console.error("\n集成测试失败：", err);
   console.error("最近消息：", received.slice(-6).map((m) => m.type));
   process.exit(1);

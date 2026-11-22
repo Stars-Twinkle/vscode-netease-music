@@ -191,6 +191,7 @@ export class EapiTransport {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     const started = Date.now();
+    const generation = this.jar.sessionGeneration;
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -200,7 +201,7 @@ export class EapiTransport {
         // 拒绝重定向：POST 被 307/308 重发时会把会话 Cookie 带到新地址
         redirect: "error",
       });
-      if (this.jar.absorbSetCookie(res.headers)) this.onCookiesChange?.();
+      if (generation === this.jar.sessionGeneration && this.jar.absorbSetCookie(res.headers)) this.onCookiesChange?.();
       let text = await res.text();
       if (text.trim().startsWith("#14")) text = eapiDecrypt(text.trim());
       this.log("debug", `eapi ${path}`, { status: res.status, ms: Date.now() - started, bytes: text.length });

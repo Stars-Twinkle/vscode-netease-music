@@ -2,7 +2,7 @@
   "name": "netease-music-sidebar",
   "displayName": "Netease Music",
   "description": "在 VS Code 侧边栏里听网易云音乐：推荐、歌单、搜索、歌词与播放控制，全部收在侧边栏内，不弹出任何大窗口。",
-  "version": "1.10.3",
+  "version": "1.10.4",
   "publisher": "starstwinkle",
   "icon": "media/icon.png",
   "repository": {
@@ -321,7 +321,8 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/host-sim.cjs && node scripts/webview-sim.cjs",
+    "test:credentials": "node esbuild.mjs && node scripts/host-sim.cjs --credentials",
+    "test": "npm run test:credentials && node scripts/host-sim.cjs && node scripts/webview-sim.cjs",
     "smoke": "node esbuild.mjs --smoke && node dist/smoke.cjs",
     "probe": "node esbuild.mjs --probe && node dist/probe.cjs",
     "package": "node esbuild.mjs && npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository",

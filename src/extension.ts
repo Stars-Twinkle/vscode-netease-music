@@ -4,6 +4,8 @@ import { DEFAULT_HOST, DESKTOP_UA } from "./api/http";
 import type { PlayerSnapshot, Quality } from "./protocol";
 import { QUALITY_LABELS, SidebarView, VIEW_ID } from "./sidebarView";
 
+import { CredentialStore } from "./credentialStore";
+
 let output: vscode.OutputChannel | undefined;
 
 function log(level: "debug" | "info" | "warn" | "error", message: string, data?: unknown): void {
@@ -73,7 +75,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(output);
   log("info", `激活 v${context.extension.packageJSON.version}`);
 
-  const savedCookies = await loadSavedCookies(context);
+  const credentials = new CredentialStore(context, (message) => log("warn", message));
+  const savedCookies = await credentials.load();
   const jar = new CookieJar(savedCookies ?? {});
 
   const statusControl = vscode.window.createStatusBarItem(
@@ -101,11 +104,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     jar,
     (level, message, data) => log(level, message, data),
     () => {
-      void persistCookies(context, jar);
+      void credentials.save(jar.toJSON()).catch(() => log("warn", "保存登录凭据失败"));
     },
   );
 
-  const view = new SidebarView(context, client, log, (snapshot) => updateStatusBar(statusControl, statusBar, snapshot));
+  const view = new SidebarView(context, client, credentials, log, (snapshot) => updateStatusBar(statusControl, statusBar, snapshot));
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(VIEW_ID, view, {
       // 播放时必须保活：侧边栏被切到后台也不能销毁音频上下文。
@@ -172,52 +175,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   log("info", "就绪");
-}
-
-const COOKIE_KEY = "neteaseSidebar.cookies";
-
-/**
- * 登录凭据放在 SecretStorage（系统密钥链加密）。
- * 旧版本存在 globalState 里的是明文，这里读取后迁移并清除。
- */
-async function loadSavedCookies(
-  context: vscode.ExtensionContext,
-): Promise<Record<string, string> | undefined> {
-  try {
-    const stored = await context.secrets.get(COOKIE_KEY);
-    if (stored) {
-      // 安全存储已有记录时，顺手清掉上次迁移失败残留的明文副本
-      if (context.globalState.get<Record<string, string>>(COOKIE_KEY)) {
-        try {
-          await context.globalState.update(COOKIE_KEY, undefined);
-          log("info", "已清理残留的明文登录凭据");
-        } catch (err) {
-          log("warn", "清理明文登录凭据失败", (err as Error).message);
-        }
-      }
-      return JSON.parse(stored) as Record<string, string>;
-    }
-  } catch (err) {
-    log("warn", "读取安全存储失败", (err as Error).message);
-  }
-  const legacy = context.globalState.get<Record<string, string>>(COOKIE_KEY);
-  if (!legacy) return undefined;
-  try {
-    await context.secrets.store(COOKIE_KEY, JSON.stringify(legacy));
-    await context.globalState.update(COOKIE_KEY, undefined);
-    log("info", "登录凭据已从明文存储迁移到安全存储");
-  } catch (err) {
-    log("warn", "登录凭据迁移失败，本次仍使用旧存储", (err as Error).message);
-  }
-  return legacy;
-}
-
-async function persistCookies(context: vscode.ExtensionContext, jar: CookieJar): Promise<void> {
-  try {
-    await context.secrets.store(COOKIE_KEY, JSON.stringify(jar.toJSON()));
-  } catch (err) {
-    log("warn", "保存登录凭据失败", (err as Error).message);
-  }
 }
 
 export function deactivate(): void {

@@ -13,6 +13,7 @@ import type {
   TrackList,
   WebviewMessage,
 } from "./protocol";
+import type { CredentialStore } from "./credentialStore";
 import { PlayQueue } from "./queue";
 import { buildHtml } from "./html";
 import { renderQrSvg } from "./qr";
@@ -20,7 +21,6 @@ import { renderQrSvg } from "./qr";
 export const VIEW_ID = "neteaseSidebar.view";
 
 const KEYS = {
-  cookies: "neteaseSidebar.cookies",
   queue: "neteaseSidebar.queue",
   volume: "neteaseSidebar.volume",
   mode: "neteaseSidebar.mode",
@@ -113,6 +113,7 @@ export class SidebarView implements vscode.WebviewViewProvider {
   constructor(
     private readonly ctx: vscode.ExtensionContext,
     private readonly client: NeteaseClient,
+    private readonly credentials: CredentialStore,
     private readonly log: Logger,
     private readonly onSnapshot?: (snapshot: PlayerSnapshot) => void,
   ) {
@@ -379,6 +380,13 @@ export class SidebarView implements vscode.WebviewViewProvider {
   }
 
   async logout(): Promise<void> {
+    let cleanupFailed = false;
+    try {
+      await this.credentials.logout();
+    } catch (err) {
+      cleanupFailed = true;
+      this.log("warn", "清理登录凭据失败", errorText(err));
+    }
     try {
       await this.client.logout();
     } catch (err) {
@@ -392,12 +400,11 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.post({ type: "account", account: null });
     this.applyQualityForLogin();
     this.sendConfig();
-    this.toast("success", "已退出登录");
+    if (cleanupFailed) this.toast("error", "当前窗口已退出，凭据清理失败。可再次执行退出登录以重试。");
+    else this.toast("success", "已退出登录");
     this.post({ type: "ui", action: "home" });
     this.urlCache.clear();
     if (this.queue.current) void this.playCurrent(this.playing, true);
-    // 持久化放在最后：写入失败只提示，不影响界面退出状态
-    await this.saveCookies();
   }
 
   /* ------------------------------------------------------------------ 命令 */
@@ -850,7 +857,11 @@ export class SidebarView implements vscode.WebviewViewProvider {
   }
 
   private async afterLogin(): Promise<void> {
-    await this.saveCookies();
+    try {
+      await this.credentials.save(this.client.jar.toJSON(), true);
+    } catch (err) {
+      this.toast("error", `登录状态保存失败：${errorText(err)}`);
+    }
     const account = await this.refreshAccount(true);
     this.lastHome = undefined;
     this.applyQualityForLogin();
@@ -1203,16 +1214,6 @@ export class SidebarView implements vscode.WebviewViewProvider {
     this.readConfig();
     this.sendConfig();
     if (before !== this.quality) this.urlCache.clear();
-  }
-
-  async saveCookies(): Promise<void> {
-    try {
-      await this.ctx.secrets.store(KEYS.cookies, JSON.stringify(this.client.jar.toJSON()));
-    } catch (err) {
-      // 凭据保存失败不应中断登录/退出流程，只提示一次
-      this.log("warn", "保存登录凭据失败", errorText(err));
-      this.toast("error", `登录状态保存失败：${errorText(err)}`);
-    }
   }
 
   private saveQueue(): void {
