@@ -99,6 +99,15 @@ function fmtCount(value: number | undefined): string {
   return String(value);
 }
 
+/** 网易云 fee=1 表示 VIP 歌曲（会员可听）；4 是购买专辑，8 是会员高音质。 */
+function isVipTrack(track: Track | null | undefined): boolean {
+  return track?.fee === 1;
+}
+
+function vipBadge(track: Track | null | undefined): string {
+  return isVipTrack(track) ? `<span class="vip-tag" title="VIP 歌曲">VIP</span>` : "";
+}
+
 const MODE_META: Record<PlayMode, { icon: string; label: string }> = {
   order: { icon: "repeat", label: "列表循环" },
   shuffle: { icon: "shuffle", label: "随机播放" },
@@ -843,7 +852,7 @@ class App {
       <div class="row${playing ? " playing" : ""}" data-action="${action}" data-index="${index}" title="${esc(track.name)}">
         <span class="idx">${playing ? `<span class="eq"><i></i><i></i><i></i></span>` : index + 1}</span>
         <div class="body">
-          <div class="name">${esc(track.name)}</div>
+          <div class="name">${esc(track.name)}${vipBadge(track)}</div>
           <div class="by">${esc(track.artists.join(" / "))}</div>
         </div>
         <button class="row-like${liked ? " active" : ""}" data-action="like-row" data-id="${track.id}" title="${liked ? "取消喜欢" : "喜欢"}">${icon(liked ? "heartFilled" : "heart")}</button>
@@ -866,7 +875,7 @@ class App {
                 <div class="row" data-action="play-result" data-index="${index}" title="${esc(track.name)}">
                   <span class="idx">${index + 1}</span>
                   <div class="body">
-                    <div class="name">${esc(track.name)}</div>
+                    <div class="name">${esc(track.name)}${vipBadge(track)}</div>
                     <div class="by">${esc(track.artists.join(" / "))}${track.album ? ` · ${esc(track.album)}` : ""}</div>
                   </div>
                   <span class="dur">${fmtTime(track.duration / 1000)}</span>
@@ -1036,7 +1045,7 @@ class App {
           </div>
         </div>
         <div class="head-info">
-          <div class="name">${esc(current.name)}</div>
+          <div class="name">${esc(current.name)}${vipBadge(current)}</div>
           <div class="by">${esc(current.artists.join(" / "))}${current.album ? ` · ${esc(current.album)}` : ""}</div>
         </div>
         <div class="now-ops">
@@ -1065,7 +1074,7 @@ class App {
         <div class="row${playing ? " playing" : ""}" data-action="jump" data-index="${index}">
           <span class="idx">${playing ? `<span class="eq"><i></i><i></i><i></i></span>` : index + 1}</span>
           <div class="body">
-            <div class="name">${esc(track.name)}</div>
+            <div class="name">${esc(track.name)}${vipBadge(track)}</div>
             <div class="by">${esc(track.artists.join(" / "))}</div>
           </div>
           <button class="row-like${liked ? " active" : ""}" data-action="like-row" data-id="${track.id}" title="${liked ? "取消喜欢" : "喜欢"}">${icon(liked ? "heartFilled" : "heart")}</button>
@@ -1423,7 +1432,7 @@ class App {
     const coverEl = this.playerEl.querySelector(".track-line .cover") as HTMLElement;
     const badge = this.playerEl.querySelector(".track-line .badge") as HTMLElement;
     const current = snapshot.current;
-    nameEl.textContent = current?.name ?? "未在播放";
+    nameEl.innerHTML = current ? `${esc(current.name)}${vipBadge(current)}` : "未在播放";
     byEl.textContent = current ? current.artists.join(" / ") : "选择一首歌开始";
     coverEl.innerHTML = current?.coverUrl ? `<img src="${cover(current.coverUrl, 80)}" alt="" />` : "";
     const levelLabel = snapshot.trial ? "试听" : LEVEL_LABEL[snapshot.actualLevel] ?? "";

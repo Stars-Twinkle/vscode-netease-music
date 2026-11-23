@@ -1195,6 +1195,22 @@ input[type="range"]::-webkit-slider-thumb {
   background: linear-gradient(135deg, #a9b0ba, #6c737d);
 }
 
+/* 歌曲 VIP 标志 */
+.vip-tag {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0 3px;
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 600;
+  font-style: normal;
+  color: #4a2b00;
+  background: linear-gradient(135deg, #ffd76e, #e8a33d);
+  vertical-align: 1px;
+  letter-spacing: 0.3px;
+}
+
 /* 会员 token：金色黑胶圆标 + 深色胶囊，模仿网易云客户端 */
 .vip-token {
   display: inline-flex;

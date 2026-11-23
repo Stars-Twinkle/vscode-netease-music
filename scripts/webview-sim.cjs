@@ -83,13 +83,14 @@ function assert(condition, message) {
   if (!condition) throw new Error(`断言失败：${message}`);
 }
 
-const track = (id, name) => ({
+const track = (id, name, extra = {}) => ({
   id,
   name,
   artists: ["测试歌手"],
   album: "测试专辑",
   coverUrl: "",
   duration: 200000,
+  ...extra,
 });
 
 const snapshot = {
@@ -162,6 +163,40 @@ async function main() {
   assert(content().querySelectorAll(".row").length === 3, "列表应渲染 3 行");
   assert(app.querySelector("#page-title").textContent === "测试歌单", "标题应切换为歌单名");
   console.log("✓ 歌单列表视图渲染");
+
+  // VIP 歌曲显示标志
+  post({
+    type: "list",
+    list: {
+      title: "测试歌单",
+      subtitle: "1 首",
+      contextName: "测试歌单",
+      playlistId: 11,
+      tracks: [track(7, "VIP 测试曲", { fee: 1 })],
+    },
+  });
+  await wait();
+  assert(content().querySelector(".vip-tag"), "VIP 歌曲应显示 VIP 标志");
+  post({
+    type: "list",
+    list: {
+      title: "测试歌单",
+      subtitle: "1 首",
+      contextName: "测试歌单",
+      playlistId: 11,
+      tracks: [track(8, "免费测试曲")],
+    },
+  });
+  await wait();
+  assert(!content().querySelector(".vip-tag"), "免费歌曲不应显示 VIP 标志");
+  console.log("✓ VIP 歌曲标志");
+
+  // 恢复原列表，后续用例依赖三首歌
+  post({
+    type: "list",
+    list: { title: "测试歌单", subtitle: "3 首", contextName: "测试歌单", playlistId: 11, tracks },
+  });
+  await wait();
 
   click('.row[data-index="1"]');
   const playCommand = posted.filter((m) => m.type === "command" && m.cmd === "playTracks").pop();
