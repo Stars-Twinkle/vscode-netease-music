@@ -924,6 +924,13 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--vscode-foreground);
 }
 
+/* 纯文本歌词：没有时间轴，不可点击跳转 */
+.lyrics .line.static {
+  cursor: default;
+  color: var(--vscode-foreground);
+  opacity: 0.85;
+}
+
 .lyrics .placeholder {
   padding: 30px 8px;
   color: var(--vscode-descriptionForeground);

@@ -209,14 +209,22 @@ function parseLrc(lrc: string, translation: string): LyricLine[] {
     return out.sort((a, b) => a.time - b.time);
   };
   const base = read(lrc);
-  const extra = read(translation);
-  const map = new Map<string, string>();
-  for (const item of extra) map.set(item.time.toFixed(2), item.text);
-  return base.map((line) => ({
-    time: line.time,
-    text: line.text,
-    translation: map.get(line.time.toFixed(2)),
-  }));
+  if (base.length) {
+    const extra = read(translation);
+    const map = new Map<string, string>();
+    for (const item of extra) map.set(item.time.toFixed(2), item.text);
+    return base.map((line) => ({
+      time: line.time,
+      text: line.text,
+      translation: map.get(line.time.toFixed(2)),
+    }));
+  }
+  // 部分歌曲的歌词是纯文本（没有时间戳），按行静态展示，不参与高亮滚动
+  return lrc
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\[[^\]]*\]/g, "").trim())
+    .filter(Boolean)
+    .map((text) => ({ time: -1, text }));
 }
 
 /* ------------------------------------------------------------------ 应用 */
@@ -1515,10 +1523,15 @@ class App {
       box.innerHTML = `<div class="placeholder">${this.lyricLoading ? "加载歌词…" : "暂无歌词"}</div>`;
       return;
     }
+    const plain = lines.every((line) => line.time < 0);
     box.innerHTML = lines
       .map(
-        (line, index) => `
-        <div class="line" data-action="lyric-seek" data-time="${line.time.toFixed(2)}" data-index="${index}">
+        (line, index) =>
+          plain
+            ? `<div class="line static">${esc(line.text)}${
+                line.translation && this.translationEnabled ? `<span class="tr">${esc(line.translation)}</span>` : ""
+              }</div>`
+            : `<div class="line" data-action="lyric-seek" data-time="${line.time.toFixed(2)}" data-index="${index}">
           ${esc(line.text)}${line.translation && this.translationEnabled ? `<span class="tr">${esc(line.translation)}</span>` : ""}
         </div>`,
       )
@@ -1531,6 +1544,8 @@ class App {
     if (this.view !== "now") return;
     const box = this.contentEl.querySelector("#lyrics");
     if (!box || !this.lyricLines.length) return;
+    // 纯文本歌词没有时间轴，不做高亮与滚动
+    if (this.lyricLines[0].time < 0) return;
     const time = this.audio.currentTime;
     let index = -1;
     for (let i = 0; i < this.lyricLines.length; i += 1) {

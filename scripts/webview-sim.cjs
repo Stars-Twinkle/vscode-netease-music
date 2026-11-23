@@ -327,6 +327,23 @@ async function main() {
   assert(audio.currentTime === 20, "点击歌词应跳转进度");
   console.log("✓ 点击歌词跳转");
 
+  // 纯文本歌词（无时间戳）也要显示，而不是「暂无歌词」
+  post({
+    type: "lyric",
+    lyric: {
+      trackId: 2,
+      lrc: "作曲 : 测试\n编曲 : 测试\n第一句歌词\n第二句歌词",
+      translation: "",
+    },
+  });
+  await wait();
+  const plainLines = content().querySelectorAll(".lyrics .line");
+  assert(plainLines.length === 4, "纯文本歌词应按行渲染");
+  assert(plainLines[2].textContent.includes("第一句歌词"), "纯文本歌词内容应保留");
+  assert(!content().querySelector(".lyrics .placeholder"), "有歌词时不应显示占位文案");
+  assert(!content().querySelector(".lyrics .line.static[data-action]"), "纯文本歌词不应可点击跳转");
+  console.log("✓ 纯文本歌词静态展示");
+
   // 切歌后歌词必须重新请求，旧歌词作废
   const lyricRequestsBefore = posted.filter((m) => m.type === "command" && m.cmd === "lyric").length;
   post({
