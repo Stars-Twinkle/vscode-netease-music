@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-import { DohResolver, postAtAddress, type DohProvider } from "./doh";
 import { CookieJar } from "./cookies";
 import { eapi as encryptEapi, eapiDecrypt } from "./crypto";
 
@@ -36,7 +35,6 @@ export class ApiError extends Error {
 
 export interface TransportOptions {
   host: string;
-  dnsMode?: "system" | DohProvider;
   userAgent: string;
   timeoutMs: number;
 }
@@ -76,7 +74,6 @@ function randomDeviceId(): string {
  */
 export class EapiTransport {
   readonly jar: CookieJar;
-  private readonly resolver = new DohResolver();
   private readonly deviceId: string;
   private lastRequestAt = 0;
   private queue: Promise<unknown> = Promise.resolve();
@@ -155,28 +152,6 @@ export class EapiTransport {
     return next;
   }
 
-  /** 提前解析 API 主机，避免第一次请求在 DoH 查询上等待。 */
-  async warmup(): Promise<void> {
-    const opts = this.getOptions();
-    if (opts.dnsMode !== "alidns" && opts.dnsMode !== "dnspod") return;
-    let hostname: string;
-    try {
-      hostname = new URL(this.host).hostname;
-    } catch {
-      return;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
-    try {
-      const address = await this.resolver.resolve(opts.dnsMode, hostname, controller.signal);
-      this.log("info", `API DNS 预热完成：${hostname} → ${address}`);
-    } catch (err) {
-      this.log("warn", "API DNS 预热失败，首次请求仍会重试", (err as Error).message);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
   async post<T = unknown>(path: string, body: Record<string, unknown> = {}, options: RequestOptions = {}): Promise<T> {
     try {
       return await this.perform<T>(path, body, options);
@@ -218,18 +193,14 @@ export class EapiTransport {
     const started = Date.now();
     const generation = this.jar.sessionGeneration;
     try {
-      const body = `params=${encodeURIComponent(payload)}`;
-      let res: Response;
-      if (opts.dnsMode === "alidns" || opts.dnsMode === "dnspod") {
-        const target = new URL(url);
-        const address = await this.resolver.resolve(opts.dnsMode, target.hostname, controller.signal);
-        this.log("debug", `API DNS ${opts.dnsMode}: ${target.hostname} → ${address}`);
-        res = await postAtAddress(target, address, headers, body, controller.signal);
-      } else {
-        res = await fetch(url, {
-          method: "POST", headers, body, signal: controller.signal, redirect: "error",
-        });
-      }
+      const res = await fetch(url, {
+        method: "POST",
+        headers,
+        body: `params=${encodeURIComponent(payload)}`,
+        signal: controller.signal,
+        // 拒绝重定向：POST 被 307/308 重发时会把会话 Cookie 带到新地址
+        redirect: "error",
+      });
       if (generation === this.jar.sessionGeneration && this.jar.absorbSetCookie(res.headers)) this.onCookiesChange?.();
       let text = await res.text();
       if (text.trim().startsWith("#14")) text = eapiDecrypt(text.trim());

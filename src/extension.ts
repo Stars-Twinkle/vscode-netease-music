@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { CookieJar, NeteaseClient } from "./api/client";
-import { DEFAULT_HOST, DESKTOP_UA, type TransportOptions } from "./api/http";
+import { DEFAULT_HOST, DESKTOP_UA } from "./api/http";
 import type { PlayerSnapshot, Quality } from "./protocol";
 import { QUALITY_LABELS, SidebarView, VIEW_ID } from "./sidebarView";
 
@@ -24,10 +24,9 @@ function safeJson(value: unknown): string {
   }
 }
 
-function readTransportOptions(): TransportOptions {
+function readTransportOptions(): { host: string; userAgent: string; timeoutMs: number } {
   const config = vscode.workspace.getConfiguration("neteaseSidebar");
   return {
-    dnsMode: config.get<TransportOptions["dnsMode"]>("apiDnsMode", "system"),
     host: config.get<string>("apiHost")?.trim() || DEFAULT_HOST,
     userAgent: config.get<string>("userAgent")?.trim() || DESKTOP_UA,
     timeoutMs: 15_000,
@@ -172,11 +171,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("neteaseSidebar")) view.onConfigurationChanged();
-      if (event.affectsConfiguration("neteaseSidebar.apiDnsMode")) void client.http.warmup();
     }),
   );
 
-  void client.http.warmup();
   log("info", "就绪");
 }
 

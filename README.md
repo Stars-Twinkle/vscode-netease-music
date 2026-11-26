@@ -85,13 +85,12 @@ pnpm release:patch -- --dry-run   # 只演练
 | `neteaseSidebar.quality` | `exhigh` | 播放音质，8 档：standard / higher / exhigh / lossless / hires / jyeffect / sky / jymaster |
 | `neteaseSidebar.volume` | `70` | 初始音量 |
 | `neteaseSidebar.lyricsTranslation` | `true` | 歌词页显示翻译 |
-| `neteaseSidebar.apiDnsMode` | `system` | 网易云 API 解析方式。可选 `alidns`（阿里）或 `dnspod`（腾讯），通过 HTTPS 查询 IPv4 地址并按 DNS TTL 缓存。切换后下一次 API 请求生效。DoH 查询失败时可切回 `system`。音频与封面继续由 Webview 加载。 |
 | `neteaseSidebar.apiHost` | `https://interface.music.163.com` | EAPI 主机，一般无需修改 |
 | `neteaseSidebar.userAgent` | 空 | 自定义 UA，留空使用内置桌面客户端 UA |
 
 ## 隐私
 
-- API 请求发往网易云音乐域名。启用 DoH 时，所选解析服务会收到 API 主机名和 DNS 记录类型。Cookie、歌曲 ID 和 API 请求正文只发往网易云。
+- 只请求 `music.163.com` 系列域名，不上传任何本地数据。
 - 登录 Cookie 保存在 VS Code 的安全存储（`SecretStorage`）中。升级时会校验并迁移旧凭据，成功后清理明文副本。退出时会记录一个不含凭据的待清理标记。若清理中断，下次启动会以游客身份重试。
 - 不包含任何统计、遥测或第三方上报代码。
 
