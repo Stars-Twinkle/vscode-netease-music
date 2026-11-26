@@ -310,7 +310,82 @@ async function testCredentials() {
   console.log("✓ 凭据迁移、清理失败重启、自动重试及迟到响应");
 }
 
-const run = process.argv.includes("--credentials") ? testCredentials : main;
+async function testDoh() {
+  const assert = require("node:assert/strict");
+  const https = require("node:https");
+  const { Readable, Writable } = require("node:stream");
+  const hostname = "interface.music.163.com";
+  const resolved = [];
+  const requests = [];
+  let systemCalls = 0;
+  let ttl = 120;
+  let status = 200;
+  let dnsStatus = 0;
+  let clock = Date.now();
+  Date.now = () => (clock += 200);
+  global.fetch = async (url, options) => {
+    if (options.method === "POST") {
+      systemCalls++;
+      return Response.json({ code: 200 });
+    }
+    assert.equal(url.searchParams.get("name"), hostname);
+    assert.equal(options.redirect, "error");
+    assert.deepEqual(Object.keys(options.headers), ["Accept"]);
+    assert.equal(options.body, undefined);
+    resolved.push(url.hostname);
+    return Response.json({ Status: dnsStatus, Answer: [
+      { type: 1, name: "other.invalid", data: "192.0.2.99", TTL: 60 },
+      { type: 5, name: hostname + ".", data: "edge.invalid.", TTL: ttl },
+      { type: 1, name: "edge.invalid.", data: "192.0.2.1", TTL: 600 },
+    ] });
+  };
+  https.request = (target, options, onResponse) => {
+    assert.equal(target.hostname, hostname);
+    assert.equal(target.protocol, "https:");
+    assert.equal(options.rejectUnauthorized, undefined);
+    assert.equal(options.headers.Cookie.includes("MUSIC_U=fixture"), true);
+    assert.equal(options.family, 4);
+    options.lookup(hostname, {}, (err, address) => { assert.ifError(err); requests.push(address); });
+    return new Writable({
+      write(_chunk, _encoding, done) { done(); },
+      final(done) {
+        const response = Readable.from([Buffer.from('{"code":200}')]);
+        response.statusCode = status;
+        response.rawHeaders = ["Set-Cookie", "fixture=updated"];
+        onResponse(response);
+        done();
+      },
+    });
+  };
+  await extension.activate(context);
+  provider.client.jar.set("MUSIC_U", "fixture");
+  const post = () => provider.client.http.post("/api/review");
+  await post();
+  configStore.apiDnsMode = "dnspod";
+  await post();
+  await post();
+  assert.deepEqual(resolved, ["doh.pub"]);
+  assert.equal(provider.client.jar.get("fixture"), "updated");
+
+  clock += 121000;
+  ttl = 0;
+  await post();
+  await post();
+  assert.deepEqual(resolved, ["doh.pub", "doh.pub", "doh.pub"]);
+  configStore.apiDnsMode = "alidns";
+  await post();
+  assert.equal(resolved.at(-1), "223.5.5.5");
+  status = 307;
+  await assert.rejects(post(), /重定向/);
+  dnsStatus = 3;
+  await assert.rejects(post(), /DoH/);
+  assert.deepEqual(requests, Array(6).fill("192.0.2.1"));
+  assert.equal(systemCalls, 1);
+  console.log("✓ 系统解析、DoH 切换、CNAME TTL、零 TTL、Cookie 隔离及失败处理");
+}
+
+const run = process.argv.includes("--doh") ? testDoh
+  : process.argv.includes("--credentials") ? testCredentials : main;
 run().catch((err) => {
   console.error("\n集成测试失败：", err);
   console.error("最近消息：", received.slice(-6).map((m) => m.type));
